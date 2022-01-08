@@ -10,8 +10,10 @@
 	
 	0.0.0.1
 		[Game]
-			- A window with something some squares moving.
-			- Hover with mouse to see what they are.
+			- A window with some squares moving.
+			- Pressing 'F' button shows shows a list.
+			- Hover with mouse to see more description.
+
 		[Code]
 			- A some what working program, with plenty to update.
 
