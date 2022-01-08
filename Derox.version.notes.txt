@@ -16,6 +16,7 @@
 
 		[Code]
 			- A some what working program, with plenty to update.
+			- Aware of the 'F' needed to be pushed twice for it to show first time.
 
 
 
