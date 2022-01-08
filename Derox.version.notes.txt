@@ -1,0 +1,19 @@
+/*
+*
+*		Created by Jussi 'Valtsu(h)' Männistö
+*
+*		Version notes
+*
+*/
+
+
+	
+	0.0.0.1
+		[Game]
+			- A window with something some squares moving.
+			- Hover with mouse to see what they are.
+		[Code]
+			- A some what working program, with plenty to update.
+
+
+
