@@ -10,7 +10,7 @@
 	
 	0.0.0.1
 		[Game]
-			- A window with some squares moving.
+			- A window with some rectangles moving.
 			- Pressing 'F' button shows shows a list.
 			- Hover with mouse to see more description.
 
