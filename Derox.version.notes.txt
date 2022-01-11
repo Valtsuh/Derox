@@ -7,6 +7,17 @@
 */
 
 
+	x.x.x.x
+		[Game]
+		[Code]
+
+
+	0.0.0.2
+		[Game]
+			- 'F' key should work now.
+		[Code]
+			- Added some much needed list handling.
+			- Some preparations / attempts at drawing characters(letters, numbers, etc.).
 	
 	0.0.0.1
 		[Game]
