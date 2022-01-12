@@ -48,7 +48,6 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 	soft.sleep = ENGINE_DATABASE_FPS_SMOOTHER;
 	soft.time._clock();
 	soft.played = 1;
-	thread(MP);
 
 	while (soft._gather()) {
 		soft._rest();

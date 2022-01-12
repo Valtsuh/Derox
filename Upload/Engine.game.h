@@ -7,7 +7,7 @@ struct BUTTON {
 	};
 	~BUTTON() {};
 
-	DINT key, pushed;
+	DINT key, pushed, down;
 };
 
 struct CONTROLS {
@@ -32,6 +32,14 @@ struct CONTROLS {
 		}
 	}
 
+
+	void _down(WPARAM key, SINT state = ENGINE_DATABASE_KEY_NOT_PUSHED) {
+		for (DINT b = 0; b < this->button.length; b++) {
+			if (this->button.item[b].key == key) {
+				this->button.item[b].down = state;
+			}
+		}
+	}
 	DINT _state(BUTTON button) {
 		for (DINT b = 0; b < this->button.length; b++) {
 			if (this->button.item[b].key == button.key) {
@@ -68,7 +76,8 @@ struct LIMB {
 	~LIMB() {};
 	double identifier;
 	STRING name;
-	DINT exist, velocity;
+	DINT exist;
+	SINT velocity;
 	DIMENSION dimension, bound;
 	LIST<PIXEL> pixel;
 	RANDOM rand;
@@ -126,18 +135,16 @@ struct CARCASS {
 
 	void _pixelize(HDC tool) {
 		if (this->limb.length > 0) {
-			DINT x, y;
-			SINT p;
+			SINT x, y, p;
 			for (DINT l = 0; l < this->limb.length; l++) {
-				for (DINT w = 1; w <= this->limb.item[l].dimension.width; w++) {
-					for (DINT h = 1; h <= this->limb.item[l].dimension.height; h++) {
-						p = (w * h) - 2;
-						if (p >= 0) {
-							x = this->dimension.x + this->limb.item[l].dimension.x + w;
-							y = this->dimension.y + this->limb.item[l].dimension.y + h;
-							//this->limb.item[l].pixel.item[p]._set(x, y, this->limb.item[l].pixel.item[p].color.ref);
-							this->limb.item[l].pixel.item[p]._draw(tool, x, y);
-						}
+				p = 0;
+				for (SINT w = 1; w <= this->limb.item[l].dimension.width; w++) {
+					p++;
+					for (SINT h = 1; h <= this->limb.item[l].dimension.height; h++) {
+						x = this->dimension.x + this->limb.item[l].dimension.x + w;
+						y = this->dimension.y + this->limb.item[l].dimension.y + h;
+						//this->limb.item[l].pixel.item[p]._set(x, y, this->limb.item[l].pixel.item[p].color.ref);
+						this->limb.item[l].pixel.item[p]._draw(tool, x, y);
 					 }
 				}
 			}
@@ -173,7 +180,7 @@ struct ATTRIBUTE {
 	};
 	~ATTRIBUTE() {};
 
-	DINT value, modifier;
+	SINT value, modifier;
 };
 struct EXPERIENCE {
 	EXPERIENCE() {
@@ -193,6 +200,8 @@ struct HEALTH {
 struct DAMAGE {
 	DAMAGE() {
 		this->value = 1;
+		this->min = 0;
+		this->max = 0;
 	};
 	~DAMAGE() {};
 	DINT value, min, max;
@@ -214,6 +223,14 @@ struct COLLISION {
 	void _reset() {
 		this->~COLLISION();
 	}
+
+	void _set(DINT collie) {
+		this->collie = (SINT)collie;
+		this->current = 1;
+		this->amount.current += 1;
+		this->from.current += 1;
+
+	}
 };
 struct ITEM {
 	ITEM(DINT identifier = 0, const char text[] = "") {
@@ -227,7 +244,9 @@ struct ITEM {
 	STRING name;
 };
 struct INVENTORY {
-	INVENTORY() {};
+	INVENTORY() {
+		this->slots = 0;
+	};
 	~INVENTORY() {};
 
 	DINT slots;
@@ -270,15 +289,27 @@ struct DESCRIPTOR {
 	DINT value;
 
 };
+struct TARGET {
+	TARGET() {
+		this->identifier = 0;
+		this->exist = 0;
+	};
+	~TARGET() {};
+	DINT identifier, exist;
+	DIMENSION dimension;
+	STRING name;
+};
 struct DUS {
 	DUS(double identifier = 0.0, const char name[] = "", DIMENSION dimension = {}, COLOR color = { 45, 180, 150 }, DESCRIPTOR desc = {}) {
 		DINT p = 0;
 		this->original._set(color);
-		for (DINT w = 0; w < dimension.width; w++) {
-			for (DINT h = 0; h < dimension.height; h++) {
-				this->pixel[p]._set(w, h, this->color);
-				this->pixel[p].unique = p;
-				p++;
+		if (dimension.width > 0 && dimension.height > 0) {
+			for (SINT w = 0; w < dimension.width; w++) {
+				for (SINT h = 0; h < dimension.height; h++) {
+					this->pixel[p]._set(w, h, this->original);
+					this->pixel[p].unique = p;
+					p++;
+				}
 			}
 		}
 		this->info = desc;
@@ -289,12 +320,10 @@ struct DUS {
 		this->dimension.width = dimension.width;
 		this->dimension.height = dimension.height;
 		this->to._set(this->dimension);
-		//this->to._set(this->dimension);
 		this->boundary.width = 24;
 		this->boundary.height = 32;
 		this->speed.value = ENGINE_DATABASE_DUS_SPEED;
 		this->set = 0;
-		//this->unique = this->dice._roll(0, 255);
 		this->unique = 0;
 		this->move = 0;
 		this->temp = { 255, 255, 255 };
@@ -302,8 +331,7 @@ struct DUS {
 	};
 	~DUS() {};
 	double identifier;
-	DINT exist;
-	DINT set, unique, move;
+	DINT exist, set, unique, move;
 	COUNTER steady;
 	DIMENSION dimension, to, boundary, previous;
 	PIXEL pixel[4096];
@@ -317,102 +345,142 @@ struct DUS {
 	COLLISION collision;
 	INVENTORY inventory;
 	DESCRIPTOR info;
+	TARGET target;
+
 	void _color(COLOR color) {
 		this->color = color;
 	}
 
 	void _update() {
+		this->collision._reset();
 		if(this->dimension.x + this->dimension.width > this->boundary.width){
 			this->dimension.x = this->boundary.width - this->dimension.width - this->speed.value;
 		}
 		if (this->dimension.y + this->dimension.height > this->boundary.height) {
 			this->dimension.y = this->boundary.height - this->dimension.height - this->speed.value;
 		}
-
+		this->steady.current++;
 	}
 
 	void _pixelize(HDC tool) {
-		DINT x = 0, y = 0;
-		for (DINT p = 0; p < this->dimension.width * this->dimension.height; p++) {
-			x = this->dimension.x + this->pixel[p].x;
-			y = this->dimension.y + this->pixel[p].y;
-			switch (this->collision.current) {
-			default:
-				this->_color(this->original);
-				break;
-			case 1:
-				this->_color({ 255, 0, 0 });
-				break;
+		if (this->dimension.width > 0 && this->dimension.height > 0) {
+			for (SINT p = 0; p < this->dimension.width * this->dimension.height; p++) {
+				switch (this->collision.current) {
+				default:
+					this->_color(this->original);
+					break;
+				case 1:
+					this->_color({ 255, 0, 0 });
+					break;
+				}
+				this->pixel[p].color._set(this->color);
+				this->pixel[p]._draw(tool, this->dimension.x, this->dimension.y);
 			}
-			this->pixel[p].color._set(this->color);
-			this->pixel[p]._draw(tool, x, y);
+		}
+	}
+
+	void _repixel(DIMENSION dimension) {
+		this->dimension._set(dimension);
+		DINT p = 0;
+		for (SINT w = 0; w < this->dimension.width; w++) {
+			for (SINT h = 0; h < this->dimension.height; h++) {
+				this->pixel[p]._set(w, h, this->original);
+				p++;
+			}
 		}
 	}
 
 	void _move() {
 		this->to._set(this->dimension);
-		switch (this->dice._roll(0, 8)) {
+		switch (this->dice._roll(0, ENGINE_DATABASE_DUS_MOVEMENT_CHANCE)) {
 		default:
 			break;
 		case 0:
-			if(this->to.x > 0) this->to.x -= this->speed.value;
+			this->to.x -= this->speed.value;
 			break;
 		case 1:
-			if(this->to.x < this->boundary.width - this->dimension.width - this->speed.value) this->to.x += this->speed.value;
+			this->to.x += this->speed.value;
 			break;
 		case 2:
-			if(this->to.y > 0) this->to.y -= this->speed.value;
+			this->to.y -= this->speed.value;
 			break;
 		case 3:
-			if(this->to.y < this->boundary.height - this->dimension.height - this->speed.value) this->to.y += this->speed.value;
+			this->to.y += this->speed.value;
 			break;
 
 		}
 	}
 
-	void _towards(DUS dus) {
+	void _towards(DIMENSION dimension = {}) {
 		this->to._set(this->dimension);
-		if (this->to.x + this->to.width < dus.to.x) {
+		if (this->to.x + this->to.width <= dimension.x) {
 			this->to.x += this->speed.value;
 		}
-		if (this->to.x > dus.to.x + dus.to.width) {
+		if (this->to.x >= dimension.x + dimension.width) {
 			this->to.x -= this->speed.value;
 		}
-		if (this->to.y + this->to.height < dus.to.y) {
+		if (this->to.y + this->to.height <= dimension.y) {
 			this->to.y += this->speed.value;
 		}
-		if (this->to.y > dus.to.y + dus.to.height) {
+		if (this->to.y >= dimension.y + dimension.height) {
 			this->to.y -= this->speed.value;
 		}
 
 	}
 
 	void _to() {
-		this->previous._set(this->dimension);
-		this->dimension._set(this->to);
+		if (
+			this->to.x >= this->boundary.x + this->speed.value &&
+			this->to.x <= this->boundary.width - this->speed.value - this->dimension.width &&
+			this->to.y >= this->boundary.x + this->speed.value &&
+			this->to.y <= this->boundary.height - this->speed.value - this->dimension.height
+
+			) {
+			this->previous._set(this->dimension);
+			this->dimension._set(this->to);
+			this->steady.current = 0;
+		}
 	}
 
-	DINT _collision(DUS dus) {
-		DINT collision = 1;
+	DINT _collive(LIST <DUS> *list) {
+		DINT collision = 0;
 		this->move = 1;
+		for (DINT c = 0; c <= list->length; c++) {
+			if (this->unique != list->item[c].unique) {
+				if (this->to.x + this->to.width >= list->item[c].to.x &&
+					this->to.x <= list->item[c].to.x + list->item[c].to.width &&
+					this->to.y + this->to.height >= list->item[c].to.y &&
+					this->to.y <= list->item[c].to.y + list->item[c].to.height
+					) {
+					// within dus, collision
+					this->collision._set(list->item[c].unique);
+					this->move = 0;
+					collision = 1;
+					break;
+				}
+			}
+		}
+		return collision;
+	}
+
+	DINT _collsiion(DUS dus) {
+		DINT collision = 0;
 		if (this->to.x + this->to.width >= dus.to.x &&
 			this->to.x <= dus.to.x + dus.to.width &&
 			this->to.y + this->to.height >= dus.to.y &&
 			this->to.y <= dus.to.y + dus.to.height
-			) { 
+			) {
 			// within dus, collision
 			this->collision.current = 1;
 			this->collision.collie = dus.unique;
 			this->collision.amount.current += 1;
 			this->collision.from.current += 1;
 			this->move = 0;
-			collision = 0;
+			collision = 1;
 		}
-		return collision;
 	}
 
-
-	DINT _description(DIMENSION dimension) {
+	DINT _description(DIMENSION dimension = {}) {
 		if (
 			dimension.x >= this->dimension.x &&
 			dimension.x <= this->dimension.x + this->dimension.width &&
@@ -422,6 +490,20 @@ struct DUS {
 			return 1;
 		}
 		return 0;
+	}
+
+	void _gather(LIST<DUS> &list) {
+			for (DINT d = 0; d < list.length; d++) {
+				
+				if (this->target.exist == 0) {
+					this->target.identifier = list.item[d].unique;
+					this->target.name = list.item[d].name;
+					this->target.dimension._set(list.item[d].dimension);
+					this->target.exist = 1;
+					break;
+				}
+				
+			}
 	}
 	
 
@@ -433,6 +515,7 @@ struct GAME {
 		this->window = 0;
 		this->temp = 0;
 		this->building = ENGINE_DATABASE_DUS_MINE;
+		this->carrier._set(this->building);
 		
 	};
 	~GAME() {};
@@ -440,140 +523,131 @@ struct GAME {
 	COUNTER counter, elapsed, fps, lps;
 	LIST <DUS> dus;
 	LIST <DUS> resource;
+	LIST <DUS> carrier;
 	DUS building;
-	CANVAS canvas;
+	DIMENSION client;
 	HWND window;
 	RANDOM dice;
 	CONTROLS controls;
 
-	void _generate(DUS dus, DINT w = 300, DINT h = 200) {
-		DINT length = this->dus._set(dus);
-		this->dus.item[length].dice._set(0, 1);
-		this->dus.item[length].dimension.x = this->dus.item[length].dice._roll(0, w);
-		this->dus.item[length].dimension.y = this->dus.item[length].dice._roll(0, h);
-		this->dus.item[length].unique = length;
-		
-		if (this->dus.length > 0)
-		{
-			DINT temp = 0;
-			do {
+	void _carriage() {
 
-				if (this->dus.item[length].unique != this->dus.item[temp].unique) {
-					if (this->dus.item[length].unique == this->dus.item[temp].unique) {
-						/*
-						do {
-							this->dus.item[length].unique = this->dus.item[length].dice._roll(0, length);
-						} while (this->dus.item[length].unique == this->dus.item[temp].unique || this->dus.item[length].unique == 0);
-						temp = 0;
-						*/
-					}
+		// 
+		this->carrier._deconstruct();
+
+		this->carrier._carry(&this->dus);
+		this->carrier._carry(&this->resource);
+		this->carrier._set(this->building);
+	}
+
+	void _generate(DUS dus, DIMENSION dimension, DINT list = 0) {
+		SINT u;
+		//dus.dimension._set(dimension);
+		do {
+			u = 0; 
+			dus.unique = dus.dice._roll(0, 999);
+
+			for (DINT c = 0; c < this->carrier.length; c++) {
+				if (dus.unique == this->carrier.item[c].unique) {
+					u = -1;
 				}
-				temp++;
-			} while (temp < length);
-		}
-		this->dus.item[length].exist = 1;
+			}
+		} while (u == -1);
 		
+		dus.dimension.x = this->dice._roll(0, this->client.width); //this->kit.canvas.measure.right - dus.speed.value - dus.dimension.width);
+		dus.dimension.y = this->dice._roll(0, this->client.height);  //this->kit.canvas.measure.bottom - dus.speed.value - dus.dimension.height);
+		dus.boundary._set({ 0, 0, this->client.width, this->client.height });
+		switch (list) {
+		default:
+		case 0:
+			this->dus._set(dus);
+			break;
+		case 1:
+			this->resource._set(dus);
+			break;
+		}
+		this->carrier._set(dus);
 	}
 
 
-	SINT _unique(DINT unique) {
+	DUS _unique(DINT unique) {
 		for (DINT d = 0; d < this->dus.length; d++) {
-			if (this->dus.item[d].unique == unique) return (SINT)d;
+			if (this->dus.item[d].unique == unique) return this->dus.item[d];
 		}
 		return -1;
 	}
 	void _set() {
 		this->controls._set();
 		for (DINT d = 0; d < 0; d++) {
-			this->_generate(ENGINE_DATABASE_DUS_SAMPLE);
+			//this->_generate(ENGINE_DATABASE_DUS_SAMPLE);
 		}
 
 		this->set = 1;
 	}
 
 	void _update() {
-		GetClientRect(this->window, &this->canvas.client);
+		this->_carriage();
+		RECT client;
+		GetClientRect(this->window, &client);
+		this->client.x = 0;
+		this->client.y = 0;
+		this->client.width = client.right;
+		this->client.height = client.bottom;
 		for (DINT d = 0; d < this->dus.length; d++) {
-			if (this->dus.item[d].boundary.width != this->canvas.client.right) this->dus.item[d].boundary.width = this->canvas.client.right;
-			if (this->dus.item[d].boundary.height != this->canvas.client.bottom) this->dus.item[d].boundary.height = this->canvas.client.bottom;
+			if (this->dus.item[d].boundary.width != this->client.width) this->dus.item[d].boundary.width = this->client.width;
+			if (this->dus.item[d].boundary.height != this->client.height) this->dus.item[d].boundary.height = this->client.height;
 			this->dus.item[d]._update();
-			this->dus.item[d].collision._reset();
 		}
 	}
 
-
-	void _movement() {
-		for (DINT d = 0; d < this->dus.length; d++) {
-
-			if (this->dus.item[d].steady.current > 25) {
-				this->dus.item[d]._towards(this->dus.item[this->dice._roll(0, this->dus.length - 1)]);
-				this->dus.item[d].steady.current = 0;
-			}
-			else {
-				this->dus.item[d]._towards(this->building);
-				this->dus.item[d].steady.current += 1;
-			}
-
-			for (DINT c = 0; c < this->dus.length; c++) {
-				if (this->dus.item[d].unique != this->dus.item[c].unique) {
-					this->dus.item[c].move = this->dus.item[d]._collision(this->dus.item[c]);
-				}
-			}
-			if (this->dus.item[d].collision.current != 1) this->dus.item[d]._to();
-
-		}
-	}
 
 	void _play() {
 		this->_update();
-		if (this->dus.length < ENGINE_DATABASE_DUS_APPEARANCES) {
-			switch (this->dice._roll(0, (DINT)(8 + (ENGINE_DATABASE_DUS_APPEARANCE_CHANCE / (this->lps.current + 1))))) {
+		if (this->resource.length < ENGINE_DATABASE_DUS_RESOURCE_APPEARANCES) {
+			switch (this->dice._roll(0, 32)) {
 			default:
 				break;
 			case 0:
-				this->_generate(ENGINE_DATABASE_DUS_SAMPLE);
+				this->_generate(ENGINE_DATABASE_DUS_CURRENCY, { -1, -1, -1, -1 }, 1);
+				break;
+			}
+		}
+		if (this->dus.length < ENGINE_DATABASE_DUS_APPEARANCES) {
+			switch (this->dice._roll(0, (DINT)(8 + (ENGINE_DATABASE_DUS_APPEARANCE_CHANCE * (this->lps.current + 1))))) {
+			default:
+				break;
+			case 0:
+				this->_generate(ENGINE_DATABASE_DUS_SAMPLE, {-1, -1, 4, 4});
 				break;
 			case 1:
-				this->_generate(ENGINE_DATABASE_DUS_NOTHING);
+				this->_generate(ENGINE_DATABASE_DUS_NOTHING, { -1, -1, 4, 4 });
 				break;
 			case 2:
-				this->_generate(ENGINE_DATABASE_DUS_UNIQUE);
+				this->_generate(ENGINE_DATABASE_DUS_UNIQUE, { -1, -1, 4, 4 });
 				break;
 			case 3:
-				this->_generate(ENGINE_DATABASE_DUS_OFFENSE);
+				this->_generate(ENGINE_DATABASE_DUS_OFFENSE, { -1, -1, 4, 4 });
 				break;
 			case 4:
-				this->_generate(ENGINE_DATABASE_DUS_DEFENSE);
+				this->_generate(ENGINE_DATABASE_DUS_DEFENSE, { -1, -1, 4, 4 });
 				break;
 
 			}
-
 		}
-
-		this->_movement();
-		this->_collect();
-		this->_battle();
-		this->_other();
-	}
-
-	void _collect() {
-
 		for (DINT d = 0; d < this->dus.length; d++) {
-			for (DINT r = 0; r < this->resource.length; r++) {
-
-
+			if (this->dus.item[d].steady.current >= 25) this->dus.item[d].steady.current = 0;
+			this->dus.item[d]._gather(this->resource);			
+			if(this->resource.length > 0) this->dus.item[d]._towards(this->resource.item[0].dimension);
+			if (this->dus.item[d]._collive(&this->carrier) == 0) {
+				this->dus.item[d]._to();
+			}
+			else {
+				if(this->dus.item[d].steady.current == 0) this->dus.item[d]._move();
 			}
 		}
+
 	}
 
-	void _other() {
-		for (DINT d = 0; d < this->dus.length; d++) {
-			this->dus.item[d]._collision(this->building);
-			if (this->dus.item[d].collision.current == 1) {
-				this->dus.item[d].inventory._add(ENGINE_DATABASE_ITEM_CURRENCY);
-			}
-		}
-	}
 
 	void _battle() {
 		for (DINT d = 0; d < this->dus.length; d++) {

@@ -23,33 +23,40 @@ struct COLOR {
 	}
 };
 struct PIXEL {
-	PIXEL(DINT x = 0, DINT y = 0, DINT exist = 0) {
+	PIXEL(DINT x = 0, DINT y = 0, DINT exist = 0, COLOR color = {}) {
 		this->x = x;
 		this->y = y;
-		this->unique = (x * y) - 2;
+		this->unique = 0;
+		this->color._set(color);
 		this->exist = exist;
 		this->active = 0;
 	};
 	~PIXEL() {};
-	DINT x, y, unique, exist, active;
+	SINT x, y, unique, exist, active;
 	COLOR color, temp;
-	void _set(DINT x, DINT y, COLOR color) {
-		this->x = x - 1;
-		this->y = y - 1;
-		this->unique = (x * y) - 2;
+
+
+	void _set(SINT x, SINT y, COLOR color) {
+		if (x >= 0) this->x = x; else this->x = 0;
+		if (y >= 0) this->y = y; else this->y = 0;
+		this->unique = x + 1 + y + 1;
 		this->color._set(color);
 		this->exist = 1;
 	}
 
 
 	void _draw(HDC tool, DINT x, DINT y) {
-		SetPixel(tool, x, y, this->color.ref);
+		if (x >= 0 && y >= 0) {
+			SetPixel(tool, this->x + x, this->y + y, this->color.ref);
+		}
 	}
 	PIXEL _get() {
 		return *this;
 	}
 
 };
+
+
 struct CANVAS {
 	CANVAS() {
 		this->info = {};
@@ -60,6 +67,7 @@ struct CANVAS {
 		this->client = {};
 		this->clnt = {};
 		this->drawn = 0;
+		this->current = 0;
 	};
 	~CANVAS() {};
 	PAINTSTRUCT info;
@@ -67,7 +75,7 @@ struct CANVAS {
 	HDC tool, mem, current;
 	HBITMAP bm;
 	DINT drawn;
-	
+
 	void _begin(HWND window) {
 		GetClientRect(window, &this->client);
 		this->mem = BeginPaint(window, &this->info);
@@ -122,5 +130,9 @@ struct CANVAS {
 
 
 };
+struct SHAPE {
+	SHAPE() {};
+	~SHAPE() {};
 
+};
 

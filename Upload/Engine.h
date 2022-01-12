@@ -2,7 +2,11 @@ typedef unsigned int DINT;
 typedef int SINT;
 struct RANDOM {
 	RANDOM(DINT min = 0, DINT max = 1) {
-		//this->_set(min, max);
+		this->min = min;
+		this->max = max;
+		this->value = 0;
+		this->tries = 0;
+		this->comparer = 0;
 	};
 	~RANDOM() {
 		this->_set(0, 1);
@@ -274,17 +278,26 @@ struct LIST {
 	LIST() {
 		this->length = 0;
 		this->total = 0;
-		for (DINT i = 0; i < 256; i++) {
-			this->item[i];
+		for (DINT i = 0; i < ENGINE_DATABASE_LIST_LENGTH_MAX; i++) {
+			//this->item[i] = { 0 };
+			this->existance[i] = 0;
 		}
 	};
-	~LIST() {};
+	~LIST() {
+
+		for (DINT i = 0; i < ENGINE_DATABASE_LIST_LENGTH_MAX; i++) {
+			this->item[i] = { 0 };
+			this->existance[i] = 0;
+		}
+		this->length = 0;
+		this->total = 0;
+	};
 
 	DINT length, total;
-	LIST_ITEM item[256]; // approx. max array length
-	DINT existance[256];
+	LIST_ITEM item[ENGINE_DATABASE_LIST_LENGTH_MAX]; // approx. max array length
+	DINT existance[ENGINE_DATABASE_LIST_LENGTH_MAX];
 	DINT _set(LIST_ITEM item) {
-		for (DINT d = 0; d < 256; d++) {
+		for (DINT d = 0; d < ENGINE_DATABASE_LIST_LENGTH_MAX; d++) {
 			if (this->existance[d] == 0) {
 				this->item[d] = item;
 				this->existance[d] = 1;
@@ -305,9 +318,30 @@ struct LIST {
 	LIST_ITEM _get(DINT position = 0) {
 		return this->item[position];
 	}
+
+	void _carry(LIST <LIST_ITEM> *list) {
+		for (DINT d = 0; d < list->length; d++) {
+			if (list->existance[d] == 1) this->_set(list->item[d]);
+		}
+	}
+
+	void _deconstruct() {
+		for (DINT i = 0; i < ENGINE_DATABASE_LIST_LENGTH_MAX; i++) {
+			this->existance[i] = 0;
+		}
+		this->length = 0;
+		this->total = 0;
+	}
+};
+
+struct PAIR {
+	DINT w, h, x, y, z;
+};
+struct UPAIR {
+	SINT w, h, x, y, z;
 };
 struct DIMENSION  {
-	DIMENSION(DINT x = 0, DINT y = 0, DINT w = 0, DINT h = 0, DINT z = 0) {
+	DIMENSION(SINT x = -1, SINT y = -1, SINT w = -1, SINT h = -1, SINT z = -1) {
 		this->x = x;
 		this->y = y;
 		this->z = z;
@@ -315,14 +349,14 @@ struct DIMENSION  {
 		this->height = h;
 	};
 	~DIMENSION() {};
-	DINT x, y, z, width, height;
+	SINT x, y, z, width, height;
 
 	void _set(DIMENSION dimension) {
-		this->x = dimension.x;
-		this->y = dimension.y;
-		this->width = dimension.width;
-		this->height = dimension.height;
-		this->z = dimension.z;
+		if(dimension.x > -1) this->x = dimension.x;
+		if(dimension.y > -1) this->y = dimension.y;
+		if(dimension.width > -1) this->width = dimension.width;
+		if(dimension.height > -1) this->height = dimension.height;
+		if(dimension.z > -1) this->z = dimension.z;
 	}
 };
 
@@ -330,7 +364,9 @@ struct DIMENSION  {
 
 //#include <iostream>
 //#include <fstream>
-#include <thread>
+
+#include <fstream>
+
 #include "Engine.graphics.h"
 
 #include "Engine.game.h"
@@ -339,20 +375,70 @@ using namespace std;
 
 namespace engine {
 	struct ENGINE {
+		
+		struct DRAW {
+			DRAW(COLOR a = {}, COLOR b = {}, COLOR c = {}, COLOR d = {}, COLOR e = {}, COLOR f = {}, COLOR g = {}, COLOR h = {}, COLOR i = {}, COLOR j = {}, COLOR k = {}, COLOR l = {}, COLOR m = {}, COLOR n = {}, COLOR o = {}) {
+				DINT p = 0;
+				for (DINT h = 0; h < 5; h++) {
+					for (DINT w = 0; w < 3; w++) {
+						this->pixel[p]._set(w * 2, h * 2, { 255, 0, 0 });
+						p++;
+					}
+				}
+			};
+			~DRAW() {};
+
+			PIXEL pixel[15];
+
+			void _set(DINT position, COLOR color) {
+				this->pixel[position].color._set(color);
+			}
+			
+		};
+
 		struct DUSSCAL {
-			DUSSCAL(double identifier = 0.0, DINT key = 0, char character = '?', DINT numeric = 0, DINT exist = 0) {
+			template <typename L>
+			struct LTYPE {
+				L primary; // , secondary;
+			};
+			DUSSCAL(double identifier = 0.0, SINT key = 0, char character = '?', char secondary = '?', SINT numeric = -1, DRAW draw = { }, DINT exist = 0) {
 				this->identifier = identifier;
 				this->key = key;
 				this->numeric = numeric;
-				this->character = character;
+				this->character[0] = character;
+				this->character[1] = secondary;
+				this->uCharacter[0] = (unsigned char)character;
+				this->uCharacter[1] = (unsigned char)secondary;
+				this->wCharacter[0] = (wchar_t)character;
+				this->wCharacter[1] = (wchar_t)secondary;
+				this->draw = draw;
 				this->exist = exist;
-				this->counter = {};
 			};
 			~DUSSCAL() {};
 			double identifier;
-			DINT numeric, key, exist;
-			char character;
+			DINT exist;
+			SINT numeric, key;
+			char character[2];
+			unsigned char uCharacter[2];
+			wchar_t wCharacter[2];
 			COUNTER counter;
+			DRAW draw;
+
+			wchar_t _wCharacter(DINT size = 0) {
+				return this->wCharacter[size];
+			}
+
+			char _character(DINT size = 0) {
+				return this->character[size];
+			}
+
+			unsigned char _uCharacter(DINT size = 0) {
+				return this->uCharacter[size];
+			}
+
+			DINT _numeric() {
+				return this->numeric;
+			}
 		};
 		struct NUMERAL {
 			NUMERAL(double identifier = 0.0, DINT key = 0, char character = '?', DINT numeric = 0, DINT exist = 0) {
@@ -393,8 +479,8 @@ namespace engine {
 			COUNTER counter;
 		};
 		struct TYPOGRAPH {
-			TYPOGRAPH(DINT exist = 0, NUMERAL zero = {}, NUMERAL one = {}, NUMERAL two = {}, NUMERAL three = {}, NUMERAL four = {}, NUMERAL five = {}, NUMERAL six = {}, NUMERAL seven = {}, NUMERAL eight = {}, NUMERAL nine = {}, LITERAL a = {}, LITERAL b = {}, LITERAL c = {}, LITERAL d = {}, LITERAL e = {}, LITERAL f = {}, LITERAL g = {}, LITERAL h = {}, LITERAL i = {}, LITERAL j = {}, LITERAL k = {}, LITERAL l = {}, LITERAL m = {}, LITERAL n = {}, LITERAL o = {}, LITERAL p = {}, LITERAL q = {}, LITERAL r = {}, LITERAL s = {}, LITERAL t = {}, LITERAL u = {}, LITERAL v = {}, LITERAL w = {}, LITERAL x = {}, LITERAL y = {}, LITERAL z = {}, LITERAL comma = {}, LITERAL dot = {}, LITERAL space = {}, LITERAL exclamation = {}, LITERAL question = {}, DUSSCAL notranslation = {}) {
-				this->zero = zero;
+			/*TYPOGRAPH(DINT exist = 0, NUMERAL zero = {}, NUMERAL one = {}, NUMERAL two = {}, NUMERAL three = {}, NUMERAL four = {}, NUMERAL five = {}, NUMERAL six = {}, NUMERAL seven = {}, NUMERAL eight = {}, NUMERAL nine = {}, LITERAL a = {}, LITERAL b = {}, LITERAL c = {}, LITERAL d = {}, LITERAL e = {}, LITERAL f = {}, LITERAL g = {}, LITERAL h = {}, LITERAL i = {}, LITERAL j = {}, LITERAL k = {}, LITERAL l = {}, LITERAL m = {}, LITERAL n = {}, LITERAL o = {}, LITERAL p = {}, LITERAL q = {}, LITERAL r = {}, LITERAL s = {}, LITERAL t = {}, LITERAL u = {}, LITERAL v = {}, LITERAL w = {}, LITERAL x = {}, LITERAL y = {}, LITERAL z = {}, LITERAL comma = {}, LITERAL dot = {}, LITERAL space = {}, LITERAL exclamation = {}, LITERAL question = {}, DUSSCAL notranslation = {}) {
+			this->zero = zero;
 				this->one = one;
 				this->two = two;
 				this->three = three;
@@ -438,18 +524,69 @@ namespace engine {
 				this->question = question;
 				this->notranslation = notranslation;
 				this->other = {};
+
 				this->exist = exist;
+				this->result = 0;
+			};
+
+			*/
+			TYPOGRAPH(DINT exist = 0, DUSSCAL zero = {}, DUSSCAL one = {}, DUSSCAL two = {}, DUSSCAL three = {}, DUSSCAL four = {}, DUSSCAL five = {}, DUSSCAL six = {}, DUSSCAL seven = {}, DUSSCAL eight = {}, DUSSCAL nine = {}, DUSSCAL a = {}, DUSSCAL b = {}, DUSSCAL c = {}, DUSSCAL d = {}, DUSSCAL e = {}, DUSSCAL f = {}, DUSSCAL g = {}, DUSSCAL h = {}, DUSSCAL i = {}, DUSSCAL j = {}, DUSSCAL k = {}, DUSSCAL l = {}, DUSSCAL m = {}, DUSSCAL n = {}, DUSSCAL o = {}, DUSSCAL p = {}, DUSSCAL q = {}, DUSSCAL r = {}, DUSSCAL s = {}, DUSSCAL t = {}, DUSSCAL u = {}, DUSSCAL v = {}, DUSSCAL w = {}, DUSSCAL x = {}, DUSSCAL y = {}, DUSSCAL z = {}, DUSSCAL comma = {}, DUSSCAL dot = {}, DUSSCAL space = {}, DUSSCAL exclamation = {}, DUSSCAL question = {}, DUSSCAL notranslation = {}, DUSSCAL other = {}) {
+				this->lit._set(zero);
+				this->lit._set(one);
+				this->lit._set(two);
+				this->lit._set(three);
+				this->lit._set(four);
+				this->lit._set(five);
+				this->lit._set(six);
+				this->lit._set(seven);
+				this->lit._set(eight);
+				this->lit._set(nine);
+				this->lit._set(a);
+				this->lit._set(b);
+				this->lit._set(c);
+				this->lit._set(d);
+				this->lit._set(e);
+				this->lit._set(f);
+				this->lit._set(g);
+				this->lit._set(h);
+				this->lit._set(i);
+				this->lit._set(j);
+				this->lit._set(k);
+				this->lit._set(l);
+				this->lit._set(m);
+				this->lit._set(n);
+				this->lit._set(o);
+				this->lit._set(p);
+				this->lit._set(q);
+				this->lit._set(r);
+				this->lit._set(s);
+				this->lit._set(t);
+				this->lit._set(u);
+				this->lit._set(v);
+				this->lit._set(w);
+				this->lit._set(x);
+				this->lit._set(y);
+				this->lit._set(z);
+				this->lit._set(dot);
+				this->lit._set(comma);
+				this->lit._set(space);
+				this->lit._set(question);
+				this->lit._set(exclamation);
+				this->notranslation = notranslation;
+				this->exist = 1;
 				this->result = 0;
 			};
 			~TYPOGRAPH() {
 
 			};
 			DINT exist, result;
-			LITERAL a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x, y, z, other, dot, comma, space, exclamation, question, literal, dummy;
-			NUMERAL zero, one, two, three, four, five, six, seven, eight, nine, nummy, numeral;
-			DUSSCAL notranslation;
+			//LITERAL a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x, y, z, other, dot, comma, space, exclamation, question, dummy;
+			//NUMERAL zero, one, two, three, four, five, six, seven, eight, nine, nummy;
+			LIST <DUSSCAL> lit;
+			DUSSCAL dummy, nummy, notranslation;
 
-			char _ncompare(DINT number) {
+			char _ncompare(SINT number) {
+				/*
 				if (this->zero.numeric == number) return this->zero.character;
 				if (this->one.numeric == number) return this->one.character;
 				if (this->two.numeric == number) return this->two.character;
@@ -460,8 +597,21 @@ namespace engine {
 				if (this->seven.numeric == number) return this->seven.character;
 				if (this->eight.numeric == number) return this->eight.character;
 				if (this->nine.numeric == number) return this->nine.character;
+				*/
+				for (DINT l = 0; l < this->lit.length; l++) {
 
+				}
+			
+				return this->lit.item[number].character[0]; // requires numbers to be added firstly
 				return '?';
+			}
+
+			DUSSCAL _lcompare(char character) {
+
+				for (DINT d = 0; d < this->lit.length; d++) {
+					if (this->lit.item[d].character[0] == character || this->lit.item[d].character[1] == character) return this->lit.item[d];
+				}
+				return this->dummy;
 			}
 
 		};
@@ -486,13 +636,20 @@ namespace engine {
 		struct WRITER {
 			WRITER() {
 				this->typer = ENGINE_DATABASE_TYPOGRAPH;
+				this->dscr = ENGINE_DATABASE_TYPOGRAPH_TWO;
 				for (DINT d = 0; d < 8; d++) this->temp[d] = {};
 			};
 			~WRITER() {};
 
 			TYPOGRAPH typer;
+			TYPOGRAPH dscr;
 			STRING string;
 			wchar_t temp[8];
+
+			template <typename VALUE>
+			wchar_t* _twrite(VALUE value) {
+
+			}
 
 			wchar_t* _itow(DINT number = 9, DINT length = 1) {
 				for (DINT i = 0; i < 8; i++) this->temp[i] = L'0';
@@ -558,6 +715,7 @@ namespace engine {
 				this->string._write(text);
 				return this->string.wtext;
 			}
+
 
 
 		};
@@ -626,7 +784,38 @@ namespace engine {
 			}
 
 		};
-		
+		struct KIT {
+			KIT() {};
+			~KIT() {};
+
+			CANVAS canvas;
+			WRITER writer;
+			DUSSCAL temp[128];
+			DUSSCAL read;
+			DUSSCAL write;
+			void _type(const char text[], DINT x = 5, DINT y = 5) {
+				DINT length = 0;
+				this->_clear();
+				do {
+					this->temp[length] = this->writer.dscr._lcompare(text[length]);
+					this->read = this->temp[length];
+					this->read.draw._set(2, { 0, 0, 255 });
+					for (DINT d = 0; d < 15; d++) {
+
+						this->read.draw.pixel[d]._draw(this->canvas.mem, (15 * (length + 1)) + x, y);
+					}
+					length++;
+				} while (text[length] != '\0');
+
+			}
+
+			void _clear() {
+				for (DINT d = 0; d < 128; d++) {
+					this->temp[d].exist = 0;
+				}
+			}
+
+		};
 		struct DETOX_FILE {
 			DETOX_FILE() {};
 			~DETOX_FILE() {};
@@ -669,7 +858,6 @@ namespace engine {
 				return this->cd.wtext;
 			}
 		};
-		
 		struct IMAGE {
 			IMAGE() {
 				this->length = 0;
@@ -679,20 +867,19 @@ namespace engine {
 			~IMAGE() {};
 			PIXEL pixel[1024]; // 32 * 32
 			DETOX_FILE file;
-			//ifstream i;
-			//ofstream o;
+			STRING get;
+			ifstream i;
+			ofstream o;
 			unsigned char info[54];
 			int length, open;
-			//PIXEL pixel[4096]; // 64 * 64
-
 
 			DINT _read(DETOX_FILE file) {
 				this->length = 0;
-				this->file = file;
-				/*
-				FILE* f = fopen(file.name.text, "rb");
-				fread(this->info, sizeof(unsigned char), 54, f);
-				*/
+				this->file.name._wwrite(file.name.wtext);
+				this->i.open(this->file.name.text, ios::binary);
+				this->open = i.is_open();
+				i.getline(this->get.text, 128);
+				//fread(this->info, sizeof(unsigned char), 54, f);
 
 				//this->o.open(this->file.name.text, ios::binary);
 				//this->open = this->o.is_open();
@@ -712,12 +899,12 @@ namespace engine {
 		WINDOW window;
 		CANVAS background, test, canvas;
 		WRITER writer;
+		KIT kit;
 		TIME time, elapse;
 		GAME game;
 		RANDOM r;
 
 		void _config() {
-			this->game.canvas = this->canvas;
 			this->game.window = this->window.handle;
 			this->r._s();
 		}
@@ -751,20 +938,8 @@ namespace engine {
 			this->game.counter.current++;
 			if (this->game.counter.current % 50 == 0) this->game.lps.current = (DINT)(this->game.counter.current / this->game.elapsed.current);
 			if (ENGINE_DATABASE_SLEEP) {
-				DINT sleep = this->game.lps.current - 60;
-				if (this->game.lps.current > 60) {
-					if (sleep < 0) sleep = 1;
-				}
-				else {
-					sleep = ENGINE_DATABASE_FPS_SMOOTHER;
-				}
-
-
+				DINT sleep = ENGINE_DATABASE_FPS_SMOOTHER;
 				Sleep(sleep + ENGINE_DATABASE_SLOW_DOWN);
-
-			}
-			else {
-
 
 			}
 			return this->played;
@@ -791,18 +966,12 @@ namespace engine {
 				break;
 			case WM_LBUTTONUP:
 				if (this->game.dus.length > 0) {
-					this->game.dus.item[0].dimension._set({ 0, 0, 16, 16 });
-					for (DINT d = 0; d < this->game.dus.length; d++) {
-						//this->game.dus.item[d].collision._reset();
-					}
+					this->game.dus.item[0]._repixel({ 5, 5, 16, 16 });
 				}
 				break;
 			case WM_RBUTTONUP:
 				if (this->game.dus.length > 0) {
-					this->game.dus.item[0].dimension._set({ 250, 250, 16, 16 });
-					for (DINT d = 0; d < this->game.dus.length; d++) {
-						//this->game.dus.item[d].collision._reset();
-					}
+					this->game.dus.item[0]._repixel({ 250, 175, 4, 4});
 				}
 				break;
 			case WM_DESTROY:
@@ -810,139 +979,95 @@ namespace engine {
 				PostQuitMessage(0);
 				break;
 			case WM_KEYDOWN:
-				//this->game.controls._push(w, ENGINE_DATABASE_KEY_PUSHED);
+				this->game.controls._down(w, (this->game.controls._state(w) == ENGINE_DATABASE_KEY_PUSHED) ? (ENGINE_DATABASE_KEY_NOT_PUSHED) : (ENGINE_DATABASE_KEY_PUSHED));
 				break;
 			case WM_KEYUP:
-				switch (this->game.controls._state(w)) {
-				default:
-				case ENGINE_DATABASE_KEY_PUSHED:
-					this->game.controls._push(w, ENGINE_DATABASE_KEY_NOT_PUSHED);
-					break;
-				case ENGINE_DATABASE_KEY_NOT_PUSHED:
-					this->game.controls._push(w, ENGINE_DATABASE_KEY_PUSHED);
-					break;
-				}
+				this->game.controls._push(w, (this->game.controls._state(w) == ENGINE_DATABASE_KEY_PUSHED) ? (ENGINE_DATABASE_KEY_NOT_PUSHED) : (ENGINE_DATABASE_KEY_PUSHED));
+				break;
 			case WM_PAINT:
 				this->_paint(window);
 				break;
+			case WM_ERASEBKGND:
+				return 1;
 			}
 			return NULL;
 		}
 
 		void _paint(HWND window) {
-			this->canvas._mbegin(window);
-			this->canvas._bkgd({ 120, 225, 125 });
+			this->kit.canvas._mbegin(window);
+			this->kit.canvas._bkgd({ 120, 225, 125 });
 			STRING string;
 			string._wwrite(this->writer._itow(this->game.elapsed.current, 8));
-			this->canvas._text(string.wtext, 8, 5, 5);
+			this->kit.canvas._text(string.wtext, 8, 5, 5);
 			string._wwrite(this->writer._itow(this->game.counter.current, 8));
-			this->canvas._text(string.wtext, 8, 85, 5);
+			this->kit.canvas._text(string.wtext, 8, 75, 5);
 			string._wwrite(this->writer._itow(this->game.lps.current, 8));
-			this->canvas._text(string.wtext, 8, 165, 5);
-			//string._wwrite(this->writer._itow(this->game.dus.length, 8));
+			this->kit.canvas._text(string.wtext, 8, 145, 5);
 			string._wwrite(this->writer._itow(this->game.dus.length, 4));
-			this->canvas._text(string.wtext, 4, 245, 5);
+			this->kit.canvas._text(string.wtext, 4, 225, 5);
 			string._wwrite(this->writer._itow(this->game.dus.total, 4));
-			//string._wwrite(this->writer._itow(GetTickCount(), 8));
-			this->canvas._text(string.wtext, 4, 325, 5);
-			this->canvas._text(this->writer._itow(this->window.mouse.x, 4), 4, 405, 5);
-			this->canvas._text(this->writer._itow(this->window.mouse.y, 4), 4, 445, 5);
-			//DETOX_FILE f;
-			//f._load(L"carcass.64x64.jpg");
-			//this->canvas._text(f.name.wtext, f.name.length, 325, 5);
-			//string._wwrite(this->writer._itow(err, 5));
-			//this->canvas._text(string.wtext, 5, 165, 5);
-			/*
-			DETOX_FILE file;
-			file._load(L"C:\\Users\\narud\\Desktop\\Detox\\Engine\\Debug\\carcass.64x64.jpg");
-
-			DINT view = 1;
-			if (view == 1) {
-				this->canvas._text(file.full.wtext, file.full.length, 5, 45);
-				this->canvas._text(file.cd.wtext, file.cd.length, 5, 65);
-				this->canvas._text(file.name.wtext, file.name.length, 5, 85);
-				this->canvas._text(this->writer._itow(file.temp.length, 8), 8, 5, 105);
-				this->canvas._text(file.temp.wtext, file.temp.length, 85, 105);
-			}
-			else {
-			}
-			//this->image._read(file);
-			*/
+			this->kit.canvas._text(string.wtext, 4, 270, 5);
+			if(this->window.mouse.x >= 0) this->kit.canvas._text(this->writer._itow(this->window.mouse.x, 4), 4, 305, 5);
+			if(this->window.mouse.y >= 0) this->kit.canvas._text(this->writer._itow(this->window.mouse.y, 4), 4, 350, 5);
+			DINT test = 0;
+			if (test == 0) {
 
 
-
-			//this->canvas._text(this->writer._itow(this->game.dus.length, 2), 2, 245, 5);
-			switch (this->game.controls._state(ENGINE_DATABASE_KEY_SELECT)) {
-			default:
-			case ENGINE_DATABASE_KEY_NOT_PUSHED:
-				break;
-			case ENGINE_DATABASE_KEY_PUSHED:
-			{
-				DINT view = 3;
-				for (DINT d = 0; d < this->game.dus.length; d++) {
-					if (this->game.dus.existance[d] == 1) {
-						this->canvas._text(this->writer._itow(this->game.dus.item[d].unique, 3), 3, 5, 25 + (d * 20));
-						this->canvas._text(this->game.dus.item[d].name.wtext, 12, 35, 25 + (d * 20));
-						switch (view) {
-						default:
-
-							this->canvas._text(this->writer._itow(this->game.dus.item[d].health.value, 2), 2, 125, 25 + (d * 20));
-							this->canvas._text(this->writer._itow(this->game.dus.item[d].damage.value, 2), 2, 145, 25 + (d * 20));
-							this->canvas._text(this->writer._itow(this->game.dus.item[d].experience.value, 2), 2, 165, 25 + (d * 20));
-
-							this->canvas._text(this->writer._itow(this->game.dus.item[d].offense.value, 2), 2, 205, 25 + (d * 20));
-							this->canvas._text(this->writer._itow(this->game.dus.item[d].defense.value, 2), 2, 225, 25 + (d * 20));
-
-							this->canvas._text(this->writer._itow(this->game.dus.item[d].collision.amount.current, 2), 2, 265, 25 + (d * 20));
-							this->canvas._text(this->writer._itow(this->game.dus.item[d].collision.from.current, 2), 2, 285, 25 + (d * 20));
-							this->canvas._text(this->writer._itow(this->game.dus.item[d].collision.to.current, 2), 2, 305, 25 + (d * 20));
-
-							break;
-						case 1:
-							this->canvas._text(this->writer._itow(this->game.dus.item[d].move, 4), 4, 5, 25 + (d * 20));
-							this->canvas._text(this->writer._itow(this->game.dus.item[d].dimension.x, 4), 4, 45, 25 + (d * 20));
-							this->canvas._text(this->writer._itow(this->game.dus.item[d].to.x + this->game.dus.item[d].to.width, 4), 4, 85, 25 + (d * 20));
-							this->canvas._text(this->writer._itow(this->game.dus.item[d].previous.x, 4), 4, 125, 25 + (d * 20));
-							this->canvas._text(this->writer._itow(this->game.dus.item[d].dimension.y, 4), 4, 165, 25 + (d * 20));
-							this->canvas._text(this->writer._itow(this->game.dus.item[d].to.y + this->game.dus.item[d].to.height, 4), 4, 205, 25 + (d * 20));
-							this->canvas._text(this->writer._itow(this->game.dus.item[d].previous.y, 4), 4, 245, 25 + (d * 20));
-							this->canvas._text(this->writer._itow(this->game.dus.item[d].collision.current, 4), 4, 285, 25 + (d * 20));
-							this->canvas._text(this->writer._itow(this->game.dus.item[d].steady.current, 4), 4, 325, 25 + (d * 20));
-							this->canvas._text(this->writer._itow(this->game.dus.item[d].unique, 4), 4, 365, 25 + (d * 20));
-							this->canvas._text(this->writer._itow(this->game.dus.item[d].unique, 4), 4, 405, 25 + (d * 20));
-							this->canvas._text(this->game.dus.item[d].name.wtext, this->game.dus.item[d].name.length, 445, 25 + (d * 20));
-							break;
-						case 2:
-							this->canvas._text(this->game.dus.item[d].inventory.item[0].name.wtext, 10, 125, 25 + (d * 20));
-							this->canvas._text(this->writer._itow(this->game.dus.item[d].inventory.item[0].amount.current, 3), 3, 205, 25 + (d * 20));
-							this->canvas._text(this->writer._itow(this->game.dus.item[d].collision.current, 3), 3, 275, 25 + (d * 20));
-							this->canvas._text(this->writer._itow(this->game.building.collision.current, 3), 3, 315, 25 + (d * 20));
-							break;
-						case 3:
-							if (this->game.dus.item[d]._description(this->window.mouse) == 1) {
-								//this->canvas._text(this->game.dus.item[d].info.description.wtext, this->game.dus.item[d].info.description.length, 125, 25 + (d * 20));
-								this->canvas._text(this->game.dus.item[d].info.description.wtext, this->game.dus.item[d].info.description.length, this->window.mouse.x, this->window.mouse.y);
-							}
-							break;
+				switch (this->game.controls._state(ENGINE_DATABASE_KEY_SELECT)) {
+				default:
+				case ENGINE_DATABASE_KEY_NOT_PUSHED:
+					break;
+				case ENGINE_DATABASE_KEY_PUSHED:
+				{
+					DINT view = 1;
+					for (DINT c = 0; c < this->game.carrier.length; c++) {
+						if (this->game.carrier.existance[c] == 1) {
+							this->kit.canvas._text(this->writer._itow(this->game.carrier.item[c].unique, 3), 3, 5, 25 + (c * 20));
+							this->kit.canvas._text(this->game.carrier.item[c].name.wtext, 12, 35, 25 + (c * 20));
+							this->kit.canvas._text(this->writer._itow(this->game.carrier.item[c].steady.current, 2), 2, 115, 25 + (c * 20));
+							this->kit.canvas._text(this->writer._itow((this->game.carrier.item[c].collision.current == 1) ? (this->game.carrier.item[c].collision.collie) : (this->game.carrier.item[c].collision.current), 3), 3, 145, 25 + (c * 20));
+							this->kit.canvas._text(this->writer._itow(this->game.carrier.item[c].target.identifier, 3), 3, 180, 25 + (c * 20));
+							this->kit.canvas._text(this->writer._itow(this->game.carrier.item[c].dimension.x, 3), 3, 215, 25 + (c * 20));
+							this->kit.canvas._text(this->writer._itow(this->game.carrier.item[c].dimension.y, 3), 3, 250, 25 + (c * 20));
+							this->kit.canvas._text(this->writer._itow(this->game.carrier.item[c].dimension.x + this->game.carrier.item[c].dimension.width, 3), 3, 285, 25 + (c * 20));
+							this->kit.canvas._text(this->writer._itow(this->game.carrier.item[c].dimension.y + this->game.carrier.item[c].dimension.height, 3), 3, 320, 25 + (c * 20));
 						}
 					}
 				}
-			}
-			break;
-			}
+				break;
+				}
 
-
-			this->game.building._pixelize(this->canvas.mem);
-			if (this->game.building._description(this->window.mouse)) {
-				this->canvas._text(this->game.building.info.description.wtext, this->game.building.info.description.length, this->window.mouse.x, this->window.mouse.y);
-			}
-			for (DINT d = 0; d < this->game.dus.length; d++) {
-				if (this->game.dus.existance[d] == 1) {
-					this->game.dus.item[d]._pixelize(this->canvas.mem);
+				this->game.building._pixelize(this->kit.canvas.mem);
+				if (this->game.building._description(this->window.mouse)) {
+					this->kit.canvas._text(this->game.building.info.description.wtext, this->game.building.info.description.length, this->window.mouse.x, this->window.mouse.y);
+				}
+				for (DINT r = 0; r < this->game.resource.length; r++) {
+					if (this->game.resource.existance[r] == 1) {
+						this->game.resource.item[r]._pixelize(this->kit.canvas.mem);
+					}
+				}
+				for (DINT d = 0; d < this->game.dus.length; d++) {
+					if (this->game.dus.existance[d] == 1) {
+						this->game.dus.item[d]._pixelize(this->kit.canvas.mem);
+					}
 				}
 			}
+			else {
 
-			this->canvas._mend(window);
+				STRING str;
+				str._wwrite(this->writer._itow(this->kit.canvas.client.right, 4));
+				this->kit.canvas._text(str.wtext, 4, 5, 25);
+				str._wwrite(this->writer._itow(this->kit.canvas.client.bottom, 4));
+				this->kit.canvas._text(str.wtext, 4, 5, 45);
+				str._wwrite(this->writer._itow(this->game.client.width, 4));
+				this->kit.canvas._text(str.wtext, 4, 5, 65);
+				str._wwrite(this->writer._itow(this->game.client.height, 4));
+				this->kit.canvas._text(str.wtext, 4, 5, 85);
+			}
+
+			this->kit._type("Hello.", 250, 250);
+
+			this->kit.canvas._mend(window);
 			//ReleaseCapture(); 
 		}
 	};
