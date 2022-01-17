@@ -10,7 +10,14 @@
 	x.x.x.x
 		[Game]
 		[Code]
+		
+		[Other]
 
+	0.0.1.2
+		[Game]
+		[Code]
+			- Revamp and clean up.
+			- 'F' non-existant, since revamp.
 
 	0.0.0.2
 		[Game]
@@ -18,7 +25,7 @@
 		[Code]
 			- Added some much needed list handling.
 			- Some preparations / attempts at drawing characters(letters, numbers, etc.).
-	
+		
 	0.0.0.1
 		[Game]
 			- A window with some rectangles moving.
