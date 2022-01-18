@@ -15,9 +15,10 @@
 
 	0.0.1.2
 		[Game]
+			- Some collision detection and handling added.
 		[Code]
+			- Custom text now handles negative values.
 			- Revamp and clean up.
-			- 'F' non-existant, since revamp.
 
 	0.0.0.2
 		[Game]
