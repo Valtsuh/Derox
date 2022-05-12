@@ -13,11 +13,23 @@
 		
 		[Other]
 
+	0.1.1.2
+		[Game]
+			- Controls removed, for now.
+			- Map generation.
+			- Some sort of inventory for creatures in addition with gathering items(non-direct).
+			- Some graphics added, instead of just boxes of colors.
+			- Some preparations for creature mutations, on thought level still.
+		[Code]
+			- List handling updated, INDEX obsoleting LIST.
+			- Some cleaning.
+
 	0.0.1.2
 		[Game]
+			- Some collision detection and handling added.
 		[Code]
+			- Custom text now handles negative values.
 			- Revamp and clean up.
-			- 'F' non-existant, since revamp.
 
 	0.0.0.2
 		[Game]
