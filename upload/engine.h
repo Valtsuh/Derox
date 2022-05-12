@@ -1,6 +1,5 @@
 typedef unsigned int DINT;
 typedef int SINT;
-#include <time.h>
 #include "engine.database.h"
 #include "engine.utils.h"
 #include "engine.graphics.h"
@@ -14,76 +13,22 @@ namespace drx1 {
 			~BINT() {};
 			unsigned int value;
 		};
-		struct DRAW {
-			DRAW(COLOR a = {255, 0, 0}, COLOR b = {}, COLOR c = {}, COLOR d = {}, COLOR e = {}, COLOR f = {}, COLOR g = {}, COLOR h = {}, COLOR i = {}, COLOR j = {}, COLOR k = {}, COLOR l = {}, COLOR m = {}, COLOR n = {}, COLOR o = {0, 0, 255}) {
-				DINT mode = 2;
-				switch (mode) {
-				default: {
-
-					this->position[0]._set(0, 0, a);
-					this->position[1]._set(1, 0, b);
-					this->position[2]._set(2, 0, c);
-					this->position[3]._set(3, 0, d);
-					this->position[4]._set(4, 0, e);
-					this->position[5]._set(0, 1, f);
-					this->position[6]._set(1, 1, g);
-					this->position[7]._set(2, 1, h);
-					this->position[8]._set(3, 1, i);
-					this->position[9]._set(4, 1, j);
-					this->position[10]._set(0, 2, k);
-					this->position[11]._set(1, 2, l);
-					this->position[12]._set(2, 2, m);
-					this->position[13]._set(3, 2, n);
-					this->position[14]._set(4, 2, o);
-					break;
-				}
-				case 1: {
-					this->position[0]._set(0, 0, a);
-					this->position[1]._set(0, 1, b);
-					this->position[2]._set(0, 2, c);
-					this->position[3]._set(0, 3, d);
-					this->position[4]._set(0, 4, e);
-					this->position[5]._set(1, 0, f);
-					this->position[6]._set(1, 1, g);
-					this->position[7]._set(1, 2, h);
-					this->position[8]._set(1, 3, i);
-					this->position[9]._set(1, 4, j);
-					this->position[10]._set(2, 0, k);
-					this->position[11]._set(2, 1, l);
-					this->position[12]._set(2, 2, m);
-					this->position[13]._set(2, 3, n);
-					this->position[14]._set(2, 4, o);
-					break;
-				}
-				case 2: {
-					this->position[0]._set(0, 0, a);
-					this->position[1]._set(1, 0, b);
-					this->position[2]._set(2, 0, c);
-					this->position[3]._set(0, 1, d);
-					this->position[4]._set(1, 1, e);
-					this->position[5]._set(2, 1, f);
-					this->position[6]._set(0, 2, g);
-					this->position[7]._set(1, 2, h);
-					this->position[8]._set(2, 2, i);
-					this->position[9]._set(0, 3, j);
-					this->position[10]._set(1, 3, k);
-					this->position[11]._set(2, 3, l);
-					this->position[12]._set(0, 4, m);
-					this->position[13]._set(1, 4, n);
-					this->position[14]._set(2, 4, o);
-					break;
-				}
-				}
-			};
-			~DRAW() {};
-
-			PIXEL position[15];
-		};
 
 		struct DRAWER {
+			DRAWER() {
+				this->bkgd = {};
+				this->bm = {};
+				this->client = {};
+				this->measure = {};
+				this->temp = {};
+				this->tool = 0;
+				this->mem = 0;
+				this->paint = {};
+			};
+			~DRAWER() {};
 			PAINTSTRUCT paint;
 			HDC tool, mem;
-			RECT client, measure;
+			RECT client, measure, temp;
 			COLOR bkgd;
 			HBITMAP bm;
 			void _begin(HWND window) {
@@ -114,10 +59,22 @@ namespace drx1 {
 
 			}
 
+			void _rect(DINT x, DINT y, DINT w, DINT h, COLOR color) {
+				HBRUSH brush = color._brush();
+				RECT rect;
+				rect.left = x;
+				rect.right = x + w;
+				rect.top = y;
+				rect.bottom = y + h;
+				FillRect(this->mem, &rect, brush);
+				DeleteObject(brush);
+
+			}
+
 		};
 		
 		struct DUSSCAL {
-			DUSSCAL(double identifier = 0.0, SINT key = -1, SINT numeric = -1, char character = ' ', char secondary = ' ', DRAW draw = {}) {
+			DUSSCAL(double identifier = 0.0, SINT key = -1, SINT numeric = -1, char character = ' ', char secondary = ' ', LITERAL literal = {}) {
 				this->identifier = identifier;
 				this->key = key;
 				this->numeric = numeric;
@@ -127,7 +84,9 @@ namespace drx1 {
 				this->uCharacter[1] = (unsigned char)this->character[1];
 				this->wCharacter[0] = (wchar_t)this->character[0];
 				this->wCharacter[1] = (wchar_t)this->character[1];
-				this->pixel = draw;
+				this->literal = literal;
+				this->capital = 0;
+				this->exist = 0;
 				
 			};
 			~DUSSCAL() {};
@@ -138,15 +97,14 @@ namespace drx1 {
 			unsigned uCharacter[2];
 			wchar_t wCharacter[2];
 			BINT bit[8];
-			DRAW pixel;
+			LITERAL literal;
 			COUNTER counter;
 
 		};
 
 		struct TYPOGRAPH {
-			TYPOGRAPH(DUSSCAL zero = {}, DUSSCAL one = {}, DUSSCAL two = {}, DUSSCAL three = {}, DUSSCAL four = {}, DUSSCAL five = {}, DUSSCAL six = {}, DUSSCAL seven = {}, DUSSCAL eight = {}, DUSSCAL nine = {}, DUSSCAL a = {}, DUSSCAL b = {}, DUSSCAL c = {}, DUSSCAL d = {}, DUSSCAL e = {}, DUSSCAL f = {}, DUSSCAL g = {}, DUSSCAL h = {}, DUSSCAL i = {}, DUSSCAL j = {}, DUSSCAL k = {}, DUSSCAL l = {}, DUSSCAL m = {}, DUSSCAL n = {}, DUSSCAL o = {}, DUSSCAL p = {}, DUSSCAL q = {}, DUSSCAL r = {}, DUSSCAL space = {}, DUSSCAL question = {}, DUSSCAL minus = {}) {
+			TYPOGRAPH(DUSSCAL zero = {}, DUSSCAL one = {}, DUSSCAL two = {}, DUSSCAL three = {}, DUSSCAL four = {}, DUSSCAL five = {}, DUSSCAL six = {}, DUSSCAL seven = {}, DUSSCAL eight = {}, DUSSCAL nine = {}, DUSSCAL a = {}, DUSSCAL b = {}, DUSSCAL c = {}, DUSSCAL d = {}, DUSSCAL e = {}, DUSSCAL f = {}, DUSSCAL g = {}, DUSSCAL h = {}, DUSSCAL i = {}, DUSSCAL j = {}, DUSSCAL k = {}, DUSSCAL l = {}, DUSSCAL m = {}, DUSSCAL n = {}, DUSSCAL o = {}, DUSSCAL p = {}, DUSSCAL q = {}, DUSSCAL r = {}, DUSSCAL s = {}, DUSSCAL t = {}, DUSSCAL u = {}, DUSSCAL v = {}, DUSSCAL w = {}, DUSSCAL x = {}, DUSSCAL y = {}, DUSSCAL z = {}, DUSSCAL space = {}, DUSSCAL question = {}, DUSSCAL minus = {}, DUSSCAL plus = {}, DUSSCAL amp = {}, DUSSCAL exc = {}) {
 				this->lit._set(zero);
-				
 				this->lit._set(one);
 				this->lit._set(two);
 				this->lit._set(three);
@@ -174,9 +132,20 @@ namespace drx1 {
 				this->lit._set(p);
 				this->lit._set(q);
 				this->lit._set(r);
+				this->lit._set(s);
+				this->lit._set(t);
+				this->lit._set(u);
+				this->lit._set(v);
+				this->lit._set(w);
+				this->lit._set(x);
+				this->lit._set(y);
+				this->lit._set(z);
 				this->lit._set(space);
 				this->lit._set(question);
 				this->lit._set(minus);
+				this->lit._set(plus);
+				this->lit._set(amp);
+				this->lit._set(exc);
 			};
 			~TYPOGRAPH() {
 			
@@ -220,10 +189,18 @@ namespace drx1 {
 			}
 
 		};
+	
 		struct WRITER {
 			WRITER() {
 				this->dscr = ENGINE_TYPOGRAPH;
 				this->spacing = 4;
+				this->length = 0;
+				for (DINT r = 0; r < 16; r++) {
+					if (r < 8) {
+						this->wwrite[r] = L' ';
+					}
+					this->write[r] = ' ';
+				}
 			};
 			~WRITER() {};
 			
@@ -234,17 +211,37 @@ namespace drx1 {
 			LIST <DUSSCAL> text;
 			char write[16];
 			wchar_t wwrite[8];
-
-			void _type(const char text[], DINT x, DINT y, DINT s = 4) {
-				DINT px, py, tw = 0;
+			void _type(const char text[], DINT x, DINT y, DINT size = 4, DINT transparency = 1, DINT spacing = 4) {
+				DINT px, py, tw = 0, ll = 0;
+				PIXEL p = {};
+				DUSSCAL tmp = {};
 				for (this->length = 0; text[this->length] != '\0'; this->length++) {
-					this->read[this->length] = this->dscr._compare(text[this->length]);
-
-					for (DINT p = 0; p < 15; p++) {
-						px = x + this->read[this->length].pixel.position[p].x * s + (this->length * s * 4);
-						py = y + this->read[this->length].pixel.position[p].y * s;
-						this->read[this->length].pixel.position[p]._scale(this->drawer.mem, px, py, s);
+					tmp = this->dscr._compare(text[this->length]);
+					for (DINT h = 0; h < tmp.literal.size.h; h++) {
+						for (DINT w = 0; w < tmp.literal.size.w; w++) {
+							p = tmp.literal._get(w, h);
+							if (p.color.exist == 1) {
+								//p.color = B;
+								px = x + (p.x * size) + (ll * size) + (this->length * spacing);
+								py = y + (p.y * size);
+								p._scale(this->drawer.mem, px, py, size);
+							}
+							else {
+								if(transparency == 1){
+								}
+							}
+						}
 					}
+					/*
+					for (DINT p = 0; p < tmp.literal.size.w * tmp.literal.size.h; p++) {					
+						if (tmp.literal.pixel[p].color.exist == 1) {
+							px = x + tmp.literal.pixel[p].x * s + (this->length * s * 4);
+							py = y + tmp.literal.pixel[p].y * s;
+							tmp.literal.pixel[p]._scale(this->drawer.mem, px, py, s);
+						}
+					}
+					*/
+					ll += tmp.literal.size.w;
 				}
 
 
@@ -407,12 +404,18 @@ namespace drx1 {
 				this->handle = 0;
 				this->info = {};
 				this->msg = { 0 };
+				this->x = 0;
+				this->y = 0;
+				this->width = 0;
+				this->heigth = 0;
+				this->window = {};
+				this->client = {};
 			};
 			~WINDOW() {};
 			HWND handle;
 			WNDCLASS info;
-			RECT client;
-			unsigned int width, heigth, x, y;
+			RECT client, window;
+			DINT width, heigth, x, y;
 			MSG msg;
 			//TRACKMOUSEEVENT me;
 
@@ -458,6 +461,10 @@ namespace drx1 {
 				this->width = w;
 				this->heigth = h;
 				SetWindowPos(this->handle, HWND_TOP, this->x, this->y, this->width, this->heigth, SWP_SHOWWINDOW);
+				this->_client();
+				this->_window();
+				//ShowWindow(this->handle, SW_SHOW);
+				//UpdateWindow(this->handle);
 				return this->handle;
 			}
 
@@ -465,24 +472,39 @@ namespace drx1 {
 				GetClientRect(this->handle, &this->client);
 			}
 
+			void _window() {
+				GetWindowRect(this->handle, &this->window);
+			}
+
 		};
+
+		ENGINE() {
+		};
+		~ENGINE() {};
 
 		WINDOW window;
 		WRITER writer;
 		GAME game;
-
+		RANDOM rand;
+		TIME timer;
+		THREAD thread[2];
 		LRESULT _caller(HWND window, UINT msg, WPARAM w, LPARAM l) {
 
 
 			switch (msg) {
-			default:
+			//default:
 				/*
 			*/
-				//system("pause");
-				return DefWindowProc(window, msg, w, l);
-			case WM_ERASEBKGND:
-				return 1;
+			//system("pause");
+				//return DefWindowProc(window, msg, w, l);
+			//case WM_ERASEBKGND:
+			//	return 1;
 
+			case WM_CLOSE:
+			case WM_QUIT:
+				this->game.played = 0;
+				break;
+				/*
 			case WM_MOUSEHOVER:
 			case WM_NCMOUSEHOVER:
 			case WM_MOUSEMOVE:
@@ -492,64 +514,118 @@ namespace drx1 {
 			case WM_MOUSEACTIVATE:
 			case WM_KEYUP:
 			case WM_KEYDOWN:
+			case WM_NCPAINT:
+			case ENGINE_DRAW:
 			case WM_PAINT:
+			*/
+			default:
 				this->writer.drawer._begin(window);
-				this->writer.drawer._bkgd(window, {185, 215, 155});
-				this->_paint();
+				this->writer.drawer._bkgd(window, { 185, 215, 155 });
+				this->writer.drawer._rect(this->game.atlas.measure.x, this->game.atlas.measure.y,this->game.atlas.measure.w, this->game.atlas.measure.h, this->game.atlas.bg);
+				DINT wi = LOWORD(w);
+				DINT li = LOWORD(l);
+				this->_paint(msg, wi, li);
 				this->writer.drawer._end(window);
-				break;
+				return DefWindowProc(window, msg, w, l);
 			}
 			return 0;
 		};
 
+
 		void _config() {
 			srand((unsigned int)time(NULL));
-			this->game.time._clock();
+			this->game.statistics.time._clock();
 			this->game.played = 1;
 			this->window._client();
+			this->window._window();
 			this->game.client.x = this->window.client.left;
 			this->game.client.y = this->window.client.top;
 			this->game.client.w = this->window.client.right;
 			this->game.client.h = this->window.client.bottom;
 		}
 
-		void _paint() {
+		void _draw() {
+
 			this->writer._type(this->writer._itoc(this->game.statistics.fps.current), 5, 5, 3);
 			this->writer._type(this->writer._itoc(this->game.statistics.loop.current), 85, 5, 3);
-			this->writer._type(this->writer._itoc(this->game.carrier.length), 5, 25, 3);
-			this->writer._type(this->writer._itoc(this->game.resource.length), 35, 25, 3);
-			this->writer._type(this->writer._itoc(this->game.current.elapsed), 5, 55, 3);
-			this->writer._type("?.-+ 0123456789", 5, 85, 3);
-			this->writer._type("abcdefghijklmnopqrstuvwxyz", 5, 125, 3); 
+			this->writer._type(this->writer._itoc(this->game.statistics.current.elapsed), 165, 5, 3);
+			this->writer._type("?.-+ 0123456789", 5, 25, 3);
+			this->writer._type("abcdefghijklmnopqrstuvwxyz", 5, 45, 3);
+			IMAGE img;
+
+			DINT rint = img._read("\\header.jpg");
+
+			std::ifstream strm;
+
+			strm.open("\\test.jpg");
+
+			this->writer._type(this->writer._itoc(strm.is_open()), 5, 65, 3);
+
+			DINT r = 0, l = 0;
+			char re[128] = "";
+			char rea = ' ';
+			STRING a;
+			strm >> re;
+			for (DINT r = 0; r < 128; r++) {
+				this->writer._type(&re[r], 5, 85, 3);
+			}
+
+		}
+
+		void _paint(DINT msg, DINT w, DINT l) {
+			/*
+			this->writer._type(this->writer._itoc(this->game.statistics.fps.current), 5, 5, 3);
+			this->writer._type(this->writer._itoc(this->game.statistics.loop.current), 85, 5, 3);
+			this->writer._type(this->writer._itoc(this->game.statistics.current.elapsed), 165, 5, 3);
+			this->writer._type(this->writer._itoc(msg), 245, 5, 3);
+			this->writer._type(this->writer._itoc(w), 65, 25, 3);
+			this->writer._type(this->writer._itoc(l), 95, 25, 3);
+			*/
+			this->writer._type("& ?.-+0123456789!", 5, 85, 3);
+			this->writer._type("abcdefghijklmnopqrstuvwxyz", 5, 125, 2); 
+			//this->writer._type(this->writer._itoc(this->game.atlas.resources.length), 10, 250, 2);
+			//this->writer._type(this->writer._itoc(this->game.atlas.resources.total), 10, 275, 2);
 			
+			this->game.atlas._draw(this->writer.drawer.mem);
+
+			for (DINT m = 0; m < this->game.atlas.maps.length; m++) {
+				if (this->game.atlas.maps.exist[m] == 1) {
+					this->game.atlas.maps.items[m]._draw(this->writer.drawer.mem);
+					this->writer._type(this->writer._itoc(this->game.atlas.maps.items[m].measure.x), 10, m * 15 + 200, 2);
+					this->writer._type(this->writer._itoc(this->game.atlas.maps.items[m].measure.y), 110, m * 15 + 200, 2);
+				}
+			}
+
 			DINT view = 1;
-			if (view) {
-				for (DINT c = 0; c < this->game.carrier.length; c++) {
-					if (this->game.carrier.existance[c] == 1) {
-						this->writer._type(this->game.carrier.item[c].name.text, 5, 155 + (c * 25), 3);
-
-
-						this->writer._type(this->writer._itoc(this->game.carrier.item[c].unique), 125, 155 + (c * 25), 3);
-						this->writer._type(this->writer._itoc(this->game.carrier.item[c].target.unique), 165, 155 + (c * 25), 3);
-						this->writer._type(this->writer._itoc(this->game.carrier.item[c].collision.collie), 225, 155 + (c * 25), 3);
-						this->writer._type(this->writer._itoc(this->game.carrier.item[c].model.to.direction), 285, 155 + (c * 25), 3);
-						this->writer._type(this->writer._itoc(this->game.carrier.item[c].model.position.direction), 305, 155 + (c * 25), 3);
-						this->writer._type(this->writer._itoc(this->game.carrier.item[c].directed.current), 325, 155 + (c * 25), 3);
+			for (DINT d = 0; d < this->game.atlas.creatures.length; d++) {
+				if (this->game.atlas.creatures.exist[d] == 1) {
+					this->game.atlas.creatures.items[d]._draw(this->writer.drawer.mem);
+					if (view == 1) {
+						//this->writer._type(this->writer._itoc(this->game.atlas.creatures.item[d].inventory.items.length), 5, 10 + (d * 25), 2);
+						for (DINT i = 0; i < this->game.atlas.creatures.items[d].inventory.items.length; i++) {
+							//this->writer._type(this->game.atlas.creatures.item[d].inventory.items.item[i].name.text, 10 + (i * 50), d * 25, 1);
+							//this->writer._type(this->writer._itoc(this->game.atlas.creatures.item[d].inventory.items.item[i].amount), 50 + (i * 50), d * 25, 1, 1, 2);
+						}
 					}
 				}
 			}
 
-			for (DINT c = 0; c < this->game.carrier.length; c++) {
-				if (this->game.carrier.existance[c] == 1) {
-					this->game.carrier.item[c]._draw(this->writer.drawer.mem);
+
+			//this->writer._type(this->writer._itoc(this->game.atlas.resources._amount()), 10, 25);
+			for (DINT r = 0; r < this->game.atlas.resources.length; r++) {
+				if (this->game.atlas.resources.exist[r] == 1) {
+					this->game.atlas.resources.items[r]._draw(this->writer.drawer.mem);
+					//this->writer._type(this->writer._itoc(this->game.atlas.resources.item[r].item.amount), 10, (r + 1) * 12, 1);
 				}
 			}
+
 			
 			//this->writer._type(this->writer._itoc(this->game.current._difference(this->game.time)), 105, 5, 3);
 			//this->writer._type("0123 A hello.   ", this->game.dice._roll(0, 250), this->game.dice._roll(0, 250), 2);
 			//this->writer._type("0123456789 ", 5, 35, 3);
 
 		}
+	
 	};
 
 

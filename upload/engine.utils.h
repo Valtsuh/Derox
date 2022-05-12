@@ -1,67 +1,5 @@
 
-template <typename LIST_ITEM>
-struct LIST {
-	LIST() {
-		this->length = 0;
-		this->total = 0;
-		for (DINT i = 0; i < ENGINE_DATABASE_LIST_LENGTH_MAX; i++) {
-			//this->item[i] = { 0 };
-			this->existance[i] = 0;
-		}
-	};
-	~LIST() {
-
-		for (DINT i = 0; i < ENGINE_DATABASE_LIST_LENGTH_MAX; i++) {
-			//this->item[i] = { 0 };
-			this->existance[i] = 0;
-		}
-		this->length = 0;
-		this->total = 0;
-	};
-
-	DINT length, total;
-	LIST_ITEM item[ENGINE_DATABASE_LIST_LENGTH_MAX]; // approx. max array length
-	DINT existance[ENGINE_DATABASE_LIST_LENGTH_MAX];
-	DINT _set(LIST_ITEM item) {
-		for (DINT d = 0; d < ENGINE_DATABASE_LIST_LENGTH_MAX; d++) {
-			if (this->existance[d] == 0) {
-				this->item[d] = item;
-				this->existance[d] = 1;
-				this->length++;
-				this->total++;
-				return d;
-			}
-		}
-		return 0;
-	}
-
-	void _remove(DINT position) {
-		this->item[position] = {};
-		this->existance[position] = 0;
-		this->length--;
-	}
-
-	LIST_ITEM _get(DINT position = 0) {
-		return this->item[position];
-	}
-
-	void _carry(LIST <LIST_ITEM>* list) {
-		for (DINT d = 0; d < list->length; d++) {
-			if (list->existance[d] == 1) this->_set(list->item[d]);
-		}
-	}
-
-	void _deconstruct() {
-		for (DINT i = 0; i < ENGINE_DATABASE_LIST_LENGTH_MAX; i++) {
-			if (this->existance[i] == 1) {
-				this->existance[i] = 0;
-				this->item[i] = { 0 };
-			}
-		}
-		this->length = 0;
-		this->total = 0;
-	}
-}; 
+#include <time.h>
 struct TIME { // As predefined -> [word]
 	TIME() {
 		this->year = 0;
@@ -203,23 +141,35 @@ struct TIME { // As predefined -> [word]
 };
 struct RANDOM {
 	RANDOM() {
-
+		this->min = 0;
+		this->max = 1;
+		this->value = 0;
 	};
-	~RANDOM() {};
+	~RANDOM() {
+		this->min = 0;
+		this->max = 1;
+		this->value = 0;
+	};
 	DINT min, max, value;
 
 	DINT _roll(SINT min = -1, SINT max = -1) {
 		if (min < 0 && max >= 0) {
-			this->value = this->min + rand() % max;
+			if (this->min == 0) max++;
+			this->value = rand() % max + this->min;
 		}
 		if (min >= 0 && max < 0) {
-			this->value = min + rand() % this->max;
+			if (min == 0) this->max++;
+			this->value = rand() % this->max + min;
+			if (min == 0) this->max--;
 		}
 		if (min < 0 && max < 0) {
-			this->value = this->min + rand() % this->max;
+			if (this->min == 0) this->max++;
+			this->value = rand() % this->max + this->min;
+			if (this->min == 0) this->max--;
 		}
 		if (min >= 0 && max >= 0) {
-			this->value = min + rand() % max;
+			if (min == 0) max++;
+			this->value = rand() % max + min;
 		}
 		return this->value;
 	}
@@ -229,9 +179,10 @@ struct COUNTER {
 	COUNTER() {
 		this->value = 0;
 		this->current = 0;
+		this->total = 0;
 	};
 	~COUNTER() {};
-	DINT value, current;
+	DINT value, current, total;
 
 };
 
@@ -244,7 +195,14 @@ struct DIMENSION {
 		this->size = 0;
 		this->direction = 0;
 	}
-	~DIMENSION() {};
+	~DIMENSION() {
+		this->x = 0;
+		this->y = 0;
+		this->w = 0;
+		this->h = 0;
+		this->size = 0;
+		this->direction = 0;
+	};
 	DINT x, y, w, h, size, direction;
 
 
@@ -275,12 +233,13 @@ struct STRING {
 		for (DINT length = 0; length < 128; length++) {
 			this->wtext[length] = L'\0';
 			this->text[length] = '\0';
+			this->utext[length] = (unsigned char)'\0';
 		}
 		this->length = 0;
 	}
 
 	void _reverse() {
-		STRING temp;
+		STRING temp = {};
 		temp._clear();
 		for (temp.length = 0; temp.length < this->length; temp.length++) {
 			temp.wtext[temp.length] = this->wtext[this->length - temp.length - 1];
@@ -321,4 +280,164 @@ struct STRING {
 		}
 		this->text[this->length] = '\0';
 	}
+};
+
+template <typename LIST_ITEM>
+struct LIST {
+	LIST() {
+		this->length = 0;
+		this->total = 0;
+		for (DINT i = 0; i < ENGINE_DATABASE_LIST_LENGTH_MAX; i++) {
+			//this->item[i] = { 0 };
+			this->existance[i] = 0;
+		}
+	};
+	~LIST() {
+
+		for (DINT i = 0; i < ENGINE_DATABASE_LIST_LENGTH_MAX; i++) {
+			//this->item[i] = { 0 };
+			this->existance[i] = 0;
+		}
+		this->length = 0;
+		this->total = 0;
+	};
+
+	DINT length, total;
+	LIST_ITEM item[ENGINE_DATABASE_LIST_LENGTH_MAX]; // approx. max array length
+	DINT existance[ENGINE_DATABASE_LIST_LENGTH_MAX];
+
+	DINT _exist(DINT position) {
+		return this->existance[position];
+	}
+
+	DINT _amount() {
+		DINT a = 0, b = 0;
+		do {
+			if(this->existance[a] == 1) a++;
+			b++;
+		} while (b < ENGINE_DATABASE_LIST_LENGTH_MAX);
+		return a;
+	}
+
+	DINT _set(LIST_ITEM item) {
+		DINT added = 0;
+		LIST <LIST_ITEM>* list = this;
+		for (DINT d = 0; d < ENGINE_DATABASE_LIST_LENGTH_MAX; d++) {
+			if (list->existance[d] == 0) {
+				this->item[d] = item;
+				this->existance[d] = 1;
+				this->length++;
+				this->total++;
+				added = 1;
+				break;
+			}
+		}
+		return added;
+	}
+
+	void _total() {
+		DINT i = 0;
+		for (DINT e = 0; e < ENGINE_DATABASE_LIST_LENGTH_MAX; e++) {
+			if (this->existance[e]) i++;
+		}
+		this->total = i;
+	}
+
+	void _remove(DINT position = 0) {
+		this->existance[position] = 0;
+		this->length--;
+		LIST <LIST_ITEM> *list = new LIST;
+		LIST <LIST_ITEM>* current = this;
+		for (DINT a = 0; a < ENGINE_DATABASE_LIST_LENGTH_MAX; a++) {
+			if (current->existance[a] == 1) {
+				list->_set(current->item[a]);
+				if (list->length == current->length) break;
+			}
+		}
+		list->total = this->total;
+		*this = *list;
+		delete list;
+	}
+
+	LIST_ITEM _get(DINT position = 0) {
+		return this->item[position];
+	}
+};
+
+template <typename ITEM>
+struct INDEX {
+	INDEX() {
+		this->length = 0;
+		this->total = 0;
+		this->items = { 0 };
+		this->exist = { 0 };
+	};
+	~INDEX() {
+		this->length = 0;
+		this->total = 0;
+		this->items = { 0 };
+		this->exist = { 0 };
+	};
+	DINT length, total;
+	ITEM* items;
+	DINT* exist;
+
+	void _add(ITEM item) {
+		INDEX <ITEM> *current = this;
+		INDEX <ITEM>* n = new INDEX <ITEM>;
+		n->items = new ITEM[current->length + 1];
+		n->exist = new DINT[current->length + 1];
+		DINT i = 0;
+		do {
+			if (i >= current->length) break;
+			if (current->exist[i] == 1) {
+				n->items[n->length] = current->items[i];
+				n->exist[n->length] = 1;
+				n->length++;
+			}
+			i++;
+		} while (n->length < current->length);
+		n->items[n->length] = item;
+		n->exist[n->length] = 1;
+		n->length++;
+		*this = *n;
+		delete n;
+	}
+
+	void _remove(DINT position) {
+		if (position >= 0 && position < this->length) {
+			this->exist[position] = 0;
+		}
+		INDEX <ITEM>* current = this;
+		INDEX <ITEM>* n = new INDEX <ITEM>;
+		n->items = new ITEM[current->length - 1];
+		n->exist = new DINT[current->length - 1];
+		DINT i = 0;
+		do {
+			if (i >= current->length) break;
+			if (current->exist[i] == 1) {
+				n->items[n->length] = current->items[i];
+				n->exist[n->length] = 1;
+				n->length++;
+			}
+			i++;
+		} while (n->length < current->length);
+		*this = *n;
+		delete n;
+	}
+
+};
+
+struct THREAD {
+	THREAD() {
+		this->started = 0;
+		this->working = 0;
+		this->finished = 0;
+		this->sleep = 1;
+	};
+	~THREAD() {};
+
+	DINT started, working, finished, sleep;
+	std::thread worker;
+
 };
