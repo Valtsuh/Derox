@@ -9,9 +9,24 @@
 
 	x.x.x.x
 		[Game]
-		[Code]
-		
+		[Code]		
 		[Other]
+
+	0.2.1.2
+		[Game]
+			- Some graphics and physics preparements.
+			- Health indication updated to be a little more accurate.
+			- Creatures on meadow-tiles (green), will be healed.
+			- Creatures on swamp-tiles (blue-greenish), will be slowed down.
+			- Creature name generation (Name in green meaning the creature is carrying a berry for healing).
+			- Save file, saving the highest creature streak (defeats), with loops counted and name.
+		[Code]	
+			- Math library, thanks to some googling.
+			- CHART quickly obsoleting INDEX (array structure).
+			- Map background moved from individual sprite writing, to generation.
+			- Map individual pixel shaders and lights.
+		[Other]
+			- Memory optimizations and leak fixes.
 
 	0.1.1.2
 		[Game]
