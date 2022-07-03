@@ -1,6 +1,3 @@
-#include <iostream>
-#include <fstream>
-
 struct COLOR {
 	COLOR(DINT r = 255, DINT g = 255, DINT b = 255, DINT exist = 1) {
 		this->r = r;
@@ -9,10 +6,22 @@ struct COLOR {
 		this->exist = exist;
 		this->ref = RGB(this->r, this->g, this->b);
 	};
-	~COLOR() {};
+	~COLOR() {
+		this->r = 0;
+		this->g = 0;
+		this->b = 0;
+		this->ref = 0;
+		this->exist = 0;
+	};
 	DINT r, g, b, exist;
 	COLORREF ref;
 	void _set(COLOR color) {
+		if (color.r > 255) color.r = 255;
+		if (color.r < 0) color.r = 0;
+		if (color.g > 255) color.g = 255;
+		if (color.g < 0) color.g = 0;
+		if (color.b > 255) color.b = 255;
+		if (color.b < 0) color.b = 0;
 		this->r = color.r;
 		this->g = color.g;
 		this->b = color.b;
@@ -28,19 +37,28 @@ struct COLOR {
 	HBRUSH _brush() {
 		return CreateSolidBrush(this->_ref());
 	}
+
 };
 
 struct PIXEL {
-	PIXEL() {
-		this->x = -1;
-		this->y = -1;
+	PIXEL(DINT x = 0, DINT y = 0, COLOR color = {}) {
+		this->x = x;
+		this->y = y;
 		this->size = 1;
 		this->exist = 1;
+		this->color = color;
+		this->shaded = 0;
+		this->lighted = 0;
 	};
-	~PIXEL() {};
-	DINT x, y, size, exist;
+	~PIXEL() {
+		this->x = 0;
+		this->y = 0;
+		this->size = 0;
+		this->exist = 0;
+		//this->color.~COLOR();
+	};
+	DINT x, y, size, exist, shaded, lighted;
 	COLOR color;
-	RANDOM dice;
 
 	void _set(DINT x = 0, DINT y = 0, COLOR color = {}) {
 		this->x = x;
@@ -48,88 +66,36 @@ struct PIXEL {
 		this->color._set(color);
 	}
 
-	void _scale(HDC tool, DINT x, DINT y, DINT size = 2, DINT mode = 0) {
+	void _draw(HDC tool) {
+		SetPixel(tool, this->x, this->y, this->color.ref);
+	}
+
+	void _scale(HDC tool, SINT x, SINT y, DINT size = 2, DINT mode = 1) {
 		if (this->exist == 1) {
 			switch (mode) {
-			default:
-				for (DINT w = 0; w < size; w++) {
-					for (DINT h = 0; h < size; h++) {
-						SetPixel(tool, x + w, y + h, this->color.ref);
-					}
-				}
-				break;
-			case 0:
-				HBRUSH brush = this->color._brush();
-				RECT rect;
-				rect.left = x;
-				rect.right = x + size;
-				rect.top = y;
-				rect.bottom = y + size;
-				FillRect(tool, &rect, brush);
-				DeleteObject(brush);
-				break;
-			}
-		}
-	}
-
-	void _rect(HDC tool, DINT x, DINT y, DINT width = 2, DINT heigth = 2, DINT mode = 1) {
-		switch (mode) {
-		default:
-			for (DINT w = 0; w < width; w++) {
-				for (DINT h = 0; h < heigth; h++) {
-					SetPixel(tool, x + w, y + h, this->color.ref);
-				}
-			}
-			break;
-		case 0:
-			HBRUSH brush = this->color._brush();
-			RECT rect;
-			rect.left = x;
-			rect.right = x + width;
-			rect.top = y;
-			rect.bottom = y + heigth;
-			FillRect(tool, &rect, brush);
-			DeleteObject(brush);
-			break;
-		}
-	}
-
-	void _worm(HDC tool, DINT x, DINT y, DINT width = 1, DINT heigth = 4, DINT inverted = 0) {
-		DINT px, py;
-		for (DINT w = 0; w < width; w++) {
-			for (DINT h = 0; h < heigth; h++) {
-				switch (this->dice._roll(1, 2)) {
-				default:
-					break;
-				case 1:
-					switch (inverted) {
-					default:
-						break;
-					case 0:
-						y += 1;
-						break;
-					case 1:
-						x += 1;
-						break;
-					}
-					break;
-				case 2:
-					switch (inverted) {
-					default:
-						break;
-					case 0:
-						y -= 1;
-						break;
-					case 1:
-						x -= 1;
-						break;
+				default: {
+					for (DINT w = 0; w < size; w++) {
+						for (DINT h = 0; h < size; h++) {
+							SetPixel(tool, x + w, y + h, this->color.ref);
+						}
 					}
 					break;
 				}
+				case 1: {
+					HBRUSH brush = this->color._brush();
+					RECT rect = {};
+					rect.left = x;
+					rect.right = x + size;
+					rect.top = y;
+					rect.bottom = y + size;
+					FillRect(tool, &rect, brush);
+					DeleteObject(brush);
+					break;
+				}
+				case 2: {
 
-				px = x + w;
-				py = y + h;
-				SetPixel(tool, px, py, this->color.ref);
+					break;
+				}
 			}
 		}
 	}
@@ -137,438 +103,905 @@ struct PIXEL {
 
 
 struct LINE {
-	LINE() {
-		this->scale = 2;
+	/*
+		
+			Study.
+	
+	*/
+	LINE(DINT px = 0, DINT py = 0, double ax = 0.0, double ay = 0.0, double bx = 0.0, double by = 0.0, COLOR color = {}) {
+		//std::cout << "\nLine constructor called. (" << ax <<", " << ay << " - " << bx << ", " << by << ")";
+		this->scale = 1;
+		this->slope = 0.0;
+		this->_position(px, py);
+		this->_set(ax, ay, bx, by);
+		this->color = color;
+
 	};
-	~LINE() {};
-	DINT scale, length;
-	DIMENSION from, current, to, size;
-	LIST <PIXEL> pixels;
-	void _set(DINT ax, DINT ay, DINT bx, DINT by) {
+	LINE(double fx, double fy, double length, double angle, COLOR color = {}, DINT center = 0) {
+		this->scale = 1;
+		this->slope = 0.0;
+		this->color = color;
+		this->length = length;
+		this->from.x = fx;
+		this->from.y = fy;
+		switch (center) {
+		default:
+			this->_angular(angle, length);
+			break;
+		case 1:
+			this->_center(angle, length);
+			break;
+		}
+	}
+	LINE(COLOR color, double fx, double fy, double tx, double ty) {
+		this->scale = 1;
+		this->slope = 0.0;
+		this->color = color;
+		this->_set(fx, fy, tx, ty);
+	}
+	~LINE() {
+	};
+	DINT scale;
+	double slope, length;
+	COLOR color;
+	POSITION position, from, current, to;
+	//INDEX <PIXEL> pixels;
+
+	void _position(DINT px, DINT py) {
+		this->position.x = (double)px;
+		this->position.y = (double)py;
+	}
+
+	void _angular(double degree, double length) {
+		this->_set(this->from.x, this->from.y, this->from.x + length * MATH::_cos(degree), this->from.y + length * MATH::_sin(degree));
+	}
+
+	void _center(double degree, double length) {
+		this->_set(this->from.x - length * MATH::_cos(degree), this->from.y - length * MATH::_sin(degree), this->from.x + length * MATH::_cos(degree), this->from.y + length * MATH::_sin(degree));
+	}
+	void _set(double ax, double ay, double bx, double by) {
 		this->current.x = ax;
 		this->current.y = ay;
 		this->from.x = ax;
 		this->from.y = ay;
 		this->to.x = bx;
 		this->to.y = by;
-		if (this->to.x >= this->from.x) {
-			this->size.w = this->to.x - this->from.x;
+		this->slope = 0.0;
+		if (this->from.x != this->to.x) {
+			if (this->from.x < this->to.x) {
+				this->slope = (this->to.y - this->from.y) / (this->to.x - this->from.x);
+			}
+			else {
+				this->slope = (this->from.y - this->to.y) / (this->from.x - this->to.x);
+			}
 		}
-		else {
-			this->size.w = this->from.x - this->to.x;
-		}
-		if (this->to.y >= this->from.y) {
-			this->size.h = this->to.y - this->from.y;
-		}
-		else {
-			this->size.h = this->from.y - this->to.y;
-		}
+
 	}
 
 	void _draw(HDC tool) {
-		for (DINT p = 0; p < this->length; p++) {
-			//this->pixel[p]._scale(tool, this->pixel[p].x, this->pixel[p].y, 1);
+		PIXEL pixel = {};
+		double steps = 0.0;
+		pixel.color = this->color;
+		if (this->from.x != this->to.x && MATH::_dabs(this->slope) <= 1.0) {
+			if (this->from.x > this->to.x) {
+				steps = this->to.y - this->slope * this->to.x;
+				for (double x = this->to.x; x < this->from.x; x += 1.0) {
+					const double y = this->slope * (double)x + steps;
+					pixel._scale(tool, (DINT)this->position.x + (DINT)x, (DINT)this->position.y + (DINT)y, this->scale);
+				}
+			}
+			else {
+				steps = this->from.y - this->slope * this->from.x;
+				for (double x = this->from.x; x < this->to.x; x += 1.0) {
+					const double y = this->slope * (double)x + steps;
+					pixel._scale(tool, (DINT)this->position.x + (DINT)x, (DINT)this->position.y + (DINT)y, this->scale);
+
+				}
+			}
+		}
+		else {
+			if (this->from.y > this->to.y) {
+				this->slope = ((double)this->from.x - (double)this->to.x) / ((double)this->from.y - (double)this->to.y);
+				steps = this->to.x - this->slope * this->to.y;
+				for (double y = this->to.y; y < this->from.y; y += 1.0) {
+					const double x = this->slope * (double)y + steps;
+					pixel._scale(tool, (DINT)this->position.x + (DINT)x, (DINT)this->position.y + (DINT)y, this->scale);
+				}
+
+			}
+			else {
+				this->slope = ((double)this->to.x - (double)this->from.x) / ((double)this->to.y - (double)this->from.y);
+				steps = this->from.x - this->slope * this->from.y;
+				for (double y = this->from.y; y < this->to.y; y += 1.0) {
+					const double x = this->slope * (double)y + steps;
+					pixel._scale(tool, (DINT)this->position.x + (DINT)x, (DINT)this->position.y + (DINT)y, this->scale);
+				}
+
+			}
 		}
 	}
 
+};
+
+struct TRIANGLE {
+	TRIANGLE() {
+		this->a = {};
+		this->b = {};
+		this->c = {};
+	};
+	~TRIANGLE() {};
+
+	LINE a, b, c;
+	COLOR color;
+	void _set(DIMENSION a, DIMENSION b, DIMENSION c, COLOR color = {}) {
+		this->color = color;
+		this->a._set(a.x, a.y, b.x, b.y);
+		this->b._set(b.x, b.y, c.x, c.y);
+		this->c._set(c.x, c.y, a.x, a.y);
+	}
+
+	void _draw(HDC tool) {
+
+		this->a._draw(tool);
+		this->b._draw(tool);
+		this->c._draw(tool);
+	}
+};
+
+struct RCT {
+	RCT(double ax = 0.0, double ay = 0.0, double bx = 0.0, double by = 0.0, COLOR color = R) {
+		this->pa = { ax, ay, 0.0 };
+		this->pb = { bx, ay, 0.0 };
+		this->pc = { bx, by, 0.0 };
+		this->pd = { ax, by, 0.0 };
+		this->color = color;
+		this->_set();
+	}
+
+	SPOT pa, pb, pc, pd;
+	LINE a, b, c, d;
+	COLOR color;
+	void _set() {
+		this->a = { 0, 0, this->pa.x, this->pa.y, this->pb.x, this->pb.y, this->color };
+		this->b = { 0, 0, this->pb.x, this->pb.y, this->pc.x, this->pc.y, this->color };
+		this->c = { 0, 0, this->pc.x, this->pc.y, this->pd.x, this->pd.y, this->color };
+		this->d = { 0, 0, this->pd.x, this->pd.y, this->pa.x, this->pa.y, this->color };
+
+	}
+
+	void _draw(HDC tool) {
+		this->a._draw(tool);
+		this->b._draw(tool);
+		this->c._draw(tool);
+		this->d._draw(tool);
+	}
+};
+
+struct CRCL {
+	CRCL(double x = 0.0, double y = 0.0, double radius = 5, double angle = 180.0, COLOR color = {}) {
+		this->center.x = x;
+		this->center.y = y;
+		this->radius = radius;
+		this->angle = angle;
+		this->color = color;
+		this->angular = {0, 0, x, y, x + radius * MATH::_cos(angle, 0.0001), y + radius * MATH::_sin(angle, 0.0001), DG };
+	}
+
+	POSITION center;
+	double radius, angle;
+	LINE angular;
+	COLOR color;
+
+	void _draw(HDC tool, double accuracy = 1.0) {
+		PIXEL pixel;
+		pixel.color = this->color;
+		double x, y, d = this->radius * 2.0;
+		LINE line;
+		line = this->angular;
+		line.scale = 1;
+		for (double a = 0.0; a < 360.0; a += accuracy) {
+			x = this->center.x + this->radius * MATH::_cos((SINT)a, 0.0025);
+			y = this->center.y + this->radius * MATH::_sin((SINT)a, 0.0025);
+			pixel._scale(tool, (DINT)x, (DINT)y, 1);
+		}
+		line._draw(tool);
+	}
+};
+
+template <class S>
+struct SHAPE : S {
+
+
+};
+
+struct HEADER {
+	HEADER() {
+		*this->type = {};
+	};
+	~HEADER() {};
+
+	char type[4];
+};
+
+struct IBYTE {
+	IBYTE() {
+		this->integer = 0;
+		this->character = ' ';
+	};
+	~IBYTE() {};
+
+	DINT integer;
+	char character;
 };
 
 struct IMAGE {
 	IMAGE() {
-		for (DINT r = 0; r < 16; r++) this->read[r] = 0;
+		this->open = 0;
+		this->cursor = 0;
+		this->length = 0;
+		this->readable = 0;
+		this->read = {};
 	};
 	~IMAGE() {};
 
 	DIMENSION measure;
-	std::ifstream strm;
-	int read[16];
+	DINT length, readable;
+	std::ifstream in;
+	std::ofstream out;
+	IBYTE* read;
+	HEADER header;
 	STRING file;
+	STRING path;
 	DINT open;
+	DINT cursor;
+	DINT _read(const char name[], SINT length = 16) {
+		this->file._write(name);
+		wchar_t cwd[128];
+		GetCurrentDirectory(128, cwd);
+		this->path._wwrite(cwd);
+		std::cout << "\nCurrent directory: " << this->path.text;
+		this->in.open(name, std::ios::in | std::ios::binary);
+		this->open = this->in.is_open();
+		if (this->open) {
+			this->out.open("image.txt");
+			if (this->out.is_open()) {
+				if (length > 0) {
+					this->length = length;
+				}
+				else {
+					this->in.seekg(0, this->in.end);
+					this->length = (DINT)this->in.tellg();
+					this->in.seekg(0, this->in.beg);
+				}
 
-	DINT _read(const char name[]) {
-		file._write(name);
-		strm.open(name);
-		this->open = strm.is_open();
+				std::cout << "\nWriting image length of " << this->length;
+				IBYTE* data = new IBYTE[this->length];
+				unsigned char read;
+				DINT i = 0;
+				while (this->in >> read && i < this->length) {
+					//if ((DINT)read < 256) {
+						data[i].character = read;
+						data[i].integer = (DINT)read;
+						i++;
+					//}
+				}
+				this->readable = i;
+				this->read = data;
+				std::cout << "\nReading image, readable length of " << this->readable;
+				for (DINT r = 0; r < this->readable; r++) {
+					this->out << this->read[r].character << " ";
+				}
+				this->in.close();
+				this->out.close();
+				return 1;
+			}
+			else {
+				this->in.close();
+				std::cout << "\nUnable to read";
+				return 0;
+			}
+		}
+		else {
+			return 0;
+		}
+	}
 
+	void _close() {
+		if (this->file.length > 0) {
+			std::cout << "\nClosing image.";
+			delete[] this->read;
+			// delete this;
+		}
+	}
+	
+};
 
-		DINT r = 0;
-		return r;
+struct GROUND {
+	GROUND() {
+		this->occupied = 0;
+		this->identifier = 0;
+	};
+	~GROUND() {};
+
+	CHART <PIXEL> pixels;
+	DIMENSION size;
+	DINT occupied, identifier;
+	COLOR color;
+
+	void _set(DINT type, SINT position) {
+		if (this->pixels.length == 0) {
+			this->size.w = 8;
+			this->size.h = 8;
+			for (DINT x = 0; x < 8; x++) {
+				for (DINT y = 0; y < 8; y++) {
+					PIXEL p = { x, y, this->color};
+					this->pixels << p;
+				}
+			}
+		}
+		
+		for (DINT pixel = 0; pixel < this->pixels.length; pixel++) {
+			PIXEL *p = &this->pixels[pixel];
+			switch (position) {
+			default:
+				break;
+			case 0:
+				if (p->x == 0 || p->x == 7 || p->y == 0 || p->y == 7) {
+					p->shaded = 1;
+					//p->lighted = 1;
+				}
+				else {
+					////p->color = this->b;
+				}
+				break;
+			case 1:
+				if (p->x == 0 || p->y == 7) {
+					p->shaded = 1;
+				}
+				else {
+					////p->color = this->b;
+				}
+				break;
+			case 11:
+				if (p->x == 0 || p->y == 7 || p->x == 7 && p->y == 0) {
+					p->shaded = 1;
+				}
+				else {
+					//p->color = this->b;
+				}
+				break;
+			case 2:
+				if (p->y == 7) {
+					p->shaded = 1;
+				}
+				else {
+					//p->color = this->b;
+				}
+				break;
+			case 12:
+				if (p->x == 0 || p->x == 7 || p->y == 7) {
+					p->shaded = 1;
+				}
+				else {
+					//p->color = this->b;
+				}
+				break;
+			case 21:
+				if (p->y == 7 || p->x == 7 && p->y == 0) {
+					p->shaded = 1;
+				}
+				else {
+					//p->color = this->b;
+				}
+				break;
+			case 22:
+				if (p->y == 7 || p->x == 0 && p->y == 0) {
+					p->shaded = 1;
+				}
+				else {
+					//p->color = this->b;
+				}
+				break;
+			case 23:
+				if (p->y == 7 || p->x == 7 && p->y == 0 || p->x == 0 && p->y == 0) {
+					p->shaded = 1;
+				}
+				else {
+					//p->color = this->b;
+				}
+				break;
+			case 3:
+				if (p->x == 7 || p->y == 7) {
+					p->shaded = 1;
+				}
+				else {
+					//p->color = this->b;
+				}
+				break;
+			case 31:
+				if (p->x == 7 || p->y == 7 || p->x == 0 && p->y == 0) {
+					p->shaded = 1;
+				}
+				else {
+					//p->color = this->b;
+				}
+				break;
+			case 4:
+				if (p->x == 0) {
+					p->shaded = 1;
+				}
+				else {
+					//p->color = this->b;
+				}
+				break;
+			case 14:
+				if (p->y == 0 || p->y == 7 || p->x == 0) {
+					p->shaded = 1;
+				}
+				else {
+					//p->color = this->b;
+				}
+				break;
+			case 41:
+				if (p->x == 0 || p->x == 7 && p->y == 7) {
+					p->shaded = 1;
+				}
+				else {
+					//p->color = this->b;
+				}
+				break;
+			case 42:
+				if (p->x == 0 || p->x == 7 && p->y == 0) {
+					p->shaded = 1;
+				}
+				else {
+					//p->color = this->b;
+				}
+				break;
+			case 43:
+				if (p->x == 0 || p->x == 7 && p->y == 0 || p->x == 7 && p->y == 7) {
+					p->shaded = 1;
+				}
+				else {
+					//p->color = this->b;
+				}
+				break;
+			case 5:
+				break;
+			case 501:
+				if (p->x == 0 && p->y == 0 || p->x == 0 && p->y == 7 || p->x == 7 && p->y == 0 || p->x == 7 && p->y == 7) {
+					p->shaded = 1;
+				}
+				else {
+					//p->color = this->b;
+				}
+				break;
+			case 502:
+				if (p->x == 0 && p->y == 0 || p->x == 0 && p->y == 7 || p->x == 7 && p->y == 0) {
+					p->shaded = 1;
+				}
+				else {
+					//p->color = this->b;
+				}
+				break;
+			case 503:
+				if (p->x == 0 && p->y == 0 || p->x == 7 && p->y == 0) {
+					p->shaded = 1;
+				}
+				else {
+					//p->color = this->b;
+				}
+				break;
+			case 504:
+				if (p->x == 0 && p->y == 0 || p->x == 7 && p->y == 0 || p->x == 7 && p->y == 7) {
+					p->shaded = 1;
+				}
+				else {
+					//p->color = this->b;
+				}
+				break;
+			case 505:
+				if (p->x == 0 && p->y == 0) {
+					p->shaded = 1;
+				}
+				else {
+					//p->color = this->b;
+				}
+				break;
+			case 506:
+				if (p->x == 0 && p->y == 0 || p->x == 7 && p->y == 7) {
+					p->shaded = 1;
+				}
+				else {
+					//p->color = this->b;
+				}
+				break;
+			case 507:
+				if (p->x == 0 && p->y == 0 || p->x == 0 && p->y == 7) {
+					p->shaded = 1;
+				}
+				else {
+					//p->color = this->b;
+				}
+				break;
+			case 508:
+				if (p->x == 0 && p->y == 0 || p->x == 0 && p->y == 7 || p->x == 7 && p->y == 7) {
+					p->shaded = 1;
+				}
+				else {
+					//p->color = this->b;
+				}
+				break;
+			case 509:
+				if (p->x == 7 && p->y == 7) {
+					p->shaded = 1;
+				}
+				else {
+					//p->color = this->b;
+				}
+				break;
+			case 510:
+				if (p->x == 0 && p->y == 7) {
+					p->shaded = 1;
+				}
+				else {
+					//p->color = this->b;
+				}
+				break;
+			case 511:
+				if (p->x == 0 && p->y == 7 || p->x == 7 && p->y == 7) {
+					p->shaded = 1;
+				}
+				else {
+					//p->color = this->b;
+				}
+				break;
+			case 512:
+				if (p->x == 7 && p->y == 0) {
+					p->shaded = 1;
+				}
+				else {
+					//p->color = this->b;
+				}
+				break;
+			case 513:
+				if (p->x == 7 && p->y == 0 || p->x == 7 && p->y == 7) {
+					p->shaded = 1;
+				}
+				else {
+					//p->color = this->b;
+				}
+				break;
+			case 514:
+				if (p->x == 0 && p->y == 7 || p->x == 7 && p->y == 0) {
+					p->shaded = 1;
+				}
+				else {
+					//p->color = this->b;
+				}
+				break;
+			case 515:
+				if (p->x == 0 && p->y == 7 || p->x == 7 && p->y == 0 || p->x == 7 && p->y == 7) {
+					p->shaded = 1;
+				}
+				else {
+					//p->color = this->b;
+				}
+				break;
+			case 6:
+				if (p->x == 7) {
+					p->shaded = 1;
+				}
+				else {
+					//p->color = this->b;
+				}
+				break;
+			case 16:
+				if (p->y == 0 || p->y == 7 || p->x == 7) {
+					p->shaded = 1;
+				}
+				else {
+					//p->color = this->b;
+				}
+				break;
+			case 61:
+				if (p->x == 7 || p->x == 0 && p->y == 7) {
+					p->shaded = 1;
+				}
+				else {
+					//p->color = this->b;
+				}
+				break;
+			case 62:
+				if (p->x == 7 || p->x == 0 && p->y == 0) {
+					p->shaded = 1;
+				}
+				else {
+					//p->color = this->b;
+				}
+				break;
+			case 63:
+				if (p->x == 7 || p->x == 0 && p->y == 7 || p->x == 0 && p->y == 0) {
+					p->shaded = 1;
+				}
+				else {
+					//p->color = this->b;
+				}
+				break;
+			case 7:
+				if (p->x == 0 || p->y == 0) {
+					p->shaded = 1;
+				}
+				else {
+					//p->color = this->b;
+				}
+				break;
+			case 71:
+				if (p->x == 0 || p->y == 0 || p->x == 7 && p->y == 7) {
+					p->shaded = 1;
+				}
+				else {
+					//p->color = this->b;
+				}
+				break;
+			case 8:
+				if (p->y == 0) {
+					p->shaded = 1;
+				}
+				else {
+					//p->color = this->b;
+				}
+				break;
+			case 18:
+				if (p->x == 0 || p->x == 7 || p->y == 0) {
+					p->shaded = 1;
+				}
+				else {
+					//p->color = this->b;
+				}
+				break;
+			case 81:
+				if (p->y == 0 || p->x == 7 && p->y == 7) {
+					p->shaded = 1;
+				}
+				else {
+					//p->color = this->b;
+				}
+				break;
+			case 82:
+				if (p->y == 0 || p->x == 0 && p->y == 7) {
+					p->shaded = 1;
+				}
+				else {
+					//p->color = this->b;
+				}
+				break;
+			case 83:
+				if (p->y == 0 || p->x == 0 && p->y == 7 || p->x == 7 && p->y == 7) {
+					p->shaded = 1;
+				}
+				else {
+					//p->color = this->b;
+				}
+				break;
+			case 9:
+				if (p->x == 7 || p->y == 0) {
+					p->shaded = 1;
+				}
+				else {
+					//p->color = this->b;
+				}
+				break;
+			case 91:
+				if (p->x == 7 || p->y == 0 || p->x == 0 && p->y == 7) {
+					p->shaded = 1;
+				}
+				else {
+					//p->color = this->b;
+				}
+				break;
+			case 99:
+				if (p->x == 0 && p->y == 0 || p->x == 7 && p->y == 7) {
+					p->color = R;
+				}
+
+				break;
+			case 101:
+				if (p->x == 0 || p->x == 7) {
+					p->shaded = 1;
+				}
+				else {
+					//p->color = this->b;
+				}
+				break;
+			case 102:
+				if (p->y == 0 || p->y == 7) {
+					p->shaded = 1;
+				}
+				else {
+					//p->color = this->b;
+				}
+				break;
+			}
+		}
+	}
+	void _draw(HDC tool, DINT x, DINT y, DINT scale = 2) {
+		DINT px, py;
+		PIXEL pix;
+		//std::cout << "\nDraw: " << this->pixels[0].color.r << ", " << this->pixels[0].color.g << ", " << this->pixels[0].color.b;
+		for (DINT p = 0; p < this->pixels.size; p++) {
+			if (this->pixels.exist[p]) {
+				pix = this->pixels[p];
+				if (pix.color.exist) {
+					px = x + pix.x * scale;
+					py = y + pix.y * scale;
+					if (this->occupied) {
+						//pix.color = PNK;
+						pix.lighted = 1;
+					}
+					if (pix.shaded) {
+						double s = 0.5;
+						pix.color._set({ (DINT)(pix.color.r * s), (DINT)(pix.color.g * s), (DINT)(pix.color.b * s) });
+					}
+					if (pix.lighted) {
+						DINT l = 45;
+						DINT r = pix.color.r + l;
+						DINT g = pix.color.g + l;
+						DINT b = pix.color.b + l;
+						pix.color._set({r, g, b});
+					}
+					pix._scale(tool, px, py, scale);
+				}
+			}
+		}
+		//system("pause");
+	}
+
+	void _color(COLOR c) {
+		this->color = c;
+		for (DINT p = 0; p < this->pixels.length; p++) {
+			if (this->pixels.exist[p]) {
+				this->pixels[p].color = c;
+			}
+		}
 	}
 };
 
-
-
 struct LITERAL {
-	LITERAL(DINT width = 3, DINT height = 5, COLOR a = { 255, 0, 0 }, COLOR b = {}, COLOR c = {}, COLOR d = {}, COLOR e = {}, COLOR f = {}, COLOR g = {}, COLOR h = {}, COLOR i = {}, COLOR j = {}, COLOR k = {}, COLOR l = {}, COLOR m = {}, COLOR n = {}, COLOR o = { 0, 0, 255 }, COLOR p = {}, COLOR q = {}, COLOR r = {}, COLOR s = {}, COLOR t = {}, COLOR u = {}, COLOR v = {}, COLOR w = {}, COLOR x = {}, COLOR y = {0, 0, 255}) {
+	LITERAL(std::initializer_list<COLOR> colors, DINT width = 3, DINT height = 5) {
 		DINT mode = 1;
-		switch (mode) {
-		default: {
+		HOLDER<COLOR> holder = colors;
+		PIXEL pixel;
+		DINT p = 0;
+		for (DINT x = 0; x < width; x++) {
+			for (DINT y = 0; y < height; y++) {
+				pixel = { x, y, holder[p] };
+				//std::cout << "\n> " << pixel.x << ", " << pixel.y << " (" << pixel.color.r << ", " << pixel.color.g << ", " << pixel.color.b << ")";
+				this->pixels << pixel;
+				p++;
+			}
+		}		
 
-			this->pixel[0]._set(0, 0, a);
-			this->pixel[1]._set(1, 0, b);
-			this->pixel[2]._set(2, 0, c);
-			this->pixel[3]._set(3, 0, d);
-			this->pixel[4]._set(4, 0, e);
-			this->pixel[5]._set(0, 1, f);
-			this->pixel[6]._set(1, 1, g);
-			this->pixel[7]._set(2, 1, h);
-			this->pixel[8]._set(3, 1, i);
-			this->pixel[9]._set(4, 1, j);
-			this->pixel[10]._set(0, 2, k);
-			this->pixel[11]._set(1, 2, l);
-			this->pixel[12]._set(2, 2, m);
-			this->pixel[13]._set(3, 2, n);
-			this->pixel[14]._set(4, 2, o);
-			break;
-		}
-		case 1: {
-			this->pixel[0]._set(0, 0, a);
-			this->pixel[1]._set(0, 1, b);
-			this->pixel[2]._set(0, 2, c);
-			this->pixel[3]._set(0, 3, d);
-			this->pixel[4]._set(0, 4, e);
-			this->pixel[5]._set(1, 0, f);
-			this->pixel[6]._set(1, 1, g);
-			this->pixel[7]._set(1, 2, h);
-			this->pixel[8]._set(1, 3, i);
-			this->pixel[9]._set(1, 4, j);
-			this->pixel[10]._set(2, 0, k);
-			this->pixel[11]._set(2, 1, l);
-			this->pixel[12]._set(2, 2, m);
-			this->pixel[13]._set(2, 3, n);
-			this->pixel[14]._set(2, 4, o);
-			this->pixel[15]._set(3, 0, p);
-			this->pixel[16]._set(3, 1, q);
-			this->pixel[17]._set(3, 2, r);
-			this->pixel[18]._set(3, 3, s);
-			this->pixel[19]._set(3, 4, t);
-			this->pixel[20]._set(4, 0, u);
-			this->pixel[21]._set(4, 1, v);
-			this->pixel[22]._set(4, 2, w);
-			this->pixel[23]._set(4, 3, x);
-			this->pixel[24]._set(4, 4, y);
-			break;
-		}
-		case 2: {
-			this->pixel[0]._set(0, 0, a);
-			this->pixel[1]._set(1, 0, b);
-			this->pixel[2]._set(2, 0, c);
-			this->pixel[3]._set(3, 0, d);
-			this->pixel[4]._set(4, 0, e);
-			this->pixel[5]._set(0, 1, f);
-			this->pixel[6]._set(1, 1, g);
-			this->pixel[7]._set(2, 1, h);
-			this->pixel[8]._set(3, 1, i);
-			this->pixel[9]._set(4, 1, j);
-			this->pixel[10]._set(0, 2, k);
-			this->pixel[11]._set(1, 2, l);
-			this->pixel[12]._set(2, 2, m);
-			this->pixel[13]._set(3, 2, n);
-			this->pixel[14]._set(4, 2, o);
-			this->pixel[15]._set(0, 3, p);
-			this->pixel[16]._set(1, 3, q);
-			this->pixel[17]._set(2, 3, r);
-			this->pixel[18]._set(3, 3, s);
-			this->pixel[19]._set(4, 3, t);
-			this->pixel[20]._set(0, 4, u);
-			this->pixel[21]._set(1, 4, v);
-			this->pixel[22]._set(2, 4, w);
-			this->pixel[23]._set(3, 4, x);
-			this->pixel[24]._set(4, 4, y);
-			break;
-		}
-		case 3: {
-			this->pixel[0]._set(0, 0, a);
-			this->pixel[1]._set(0, 1, b);
-			this->pixel[2]._set(0, 0, c);
-			this->pixel[3]._set(0, 0, d);
-			this->pixel[4]._set(0, 0, e);
-			this->pixel[5]._set(1, 0, f);
-			this->pixel[6]._set(0, 0, g);
-			this->pixel[7]._set(0, 0, h);
-			this->pixel[8]._set(0, 0, i);
-			this->pixel[9]._set(1, 1, j);
-			this->pixel[10]._set(0, 0, k);
-			this->pixel[11]._set(0, 0, l);
-			this->pixel[12]._set(0, 0, m);
-			this->pixel[13]._set(0, 0, n);
-			this->pixel[14]._set(0, 0, o);
-			this->pixel[15]._set(0, 0, p);
-			this->pixel[16]._set(0, 0, q);
-			this->pixel[17]._set(0, 0, r);
-			this->pixel[18]._set(0, 0, s);
-			this->pixel[19]._set(0, 0, t);
-			this->pixel[20]._set(0, 4, u);
-			this->pixel[21]._set(0, 0, v);
-			this->pixel[22]._set(0, 0, w);
-			this->pixel[23]._set(0, 0, x);
-			this->pixel[24]._set(4, 4, y);
-		}
-		}
 		this->size.w = width;
 		this->size.h = height;
 	};
+	LITERAL() {};
 	~LITERAL() {};
 
-	PIXEL pixel[25];
+	CHART <PIXEL> pixels;
 	DIMENSION size;
 
-	PIXEL _get(DINT x = 0, DINT y = 0) {
-		for (DINT s = 0; s < 25; s++) {
-			if (this->pixel[s].x == x) {
-				if (this->pixel[s].y == y) return this->pixel[s];
-			}
+	PIXEL _get(DINT x, DINT y) {
+		for (DINT i = 0; i < this->pixels.size; i++) {
+			if (this->pixels[i].x == x && this->pixels[i].y == y) return this->pixels[i];
 		}
 		PIXEL p = {};
 		return p;
 	}
 };
 
-
-struct SPRITE {
-	/*
-	template <typename... colors>
-	SPRITE(colors... color) {
-		DINT p = 0;
-		COLOR clr;
-		for (DINT h = 0; h < 5; h++) {
-			for (DINT w = 0; w < 5; w++) {
-				clr = color...[0];
-				this->position[p]._set(w, h, clr);
-				p++;
+struct SPRT {
+	SPRT(std::initializer_list<COLOR> colors) {
+		//std::cout << "Constructing sprite.";
+		HOLDER<COLOR> clrs = colors;
+		DINT size = 8;
+		this->size.w = size;
+		this->size.h = size;
+		DINT c = 0;
+		this->pixels = this->size.w * this->size.h;
+		for (DINT y = 0; y < size; y++) {
+			for (DINT x = 0; x < size; x++) {
+				PIXEL pixel = { x, y, clrs[c] };
+				this->pixels << pixel;
+				c++;
 			}
 		}
 
 	};
-	*/
-	
-	SPRITE(
-		COLOR a = {255, 0, 0}, 
-		COLOR b = {0, 0, 0, 0}, 
-		COLOR c = {}, 
-		COLOR d = {}, 
-		COLOR e = {}, 
-
-		COLOR f = {}, 
-		COLOR g = {}, 
-		COLOR h = {}, 
-		COLOR i = {}, 
-		COLOR j = {}, 
-		
-		COLOR k = {}, 
-		COLOR l = {}, 
-		COLOR m = {}, 
-		COLOR n = {}, 
-		COLOR o = {}, 
-
-		COLOR p = {0, 0, 255}, 
-		COLOR q = {}, 
-		COLOR r = {}, 
-		COLOR s = {}, 
-		COLOR t = {}, 
-
-		COLOR u = {}, 
-		COLOR v = {},
-		COLOR w = {},
-		COLOR x = {},
-		COLOR y = {0, 0, 255},
-		
-		COLOR z = {},
-		COLOR aa = {},
-		COLOR ab = {},
-		COLOR ac = {},
-		COLOR ad = {},
-		
-		COLOR ae = {},
-		COLOR af = {},
-		COLOR ag = {},
-		COLOR ah = {},
-		COLOR ai = {},
-		
-		COLOR aj = { 0, 0, 255 }, // 36
-		COLOR ak = {},
-		COLOR al = {},
-		COLOR am = {},
-		COLOR an = {},
-
-		COLOR ao = {},
-		COLOR ap = {},
-		COLOR aq = {},
-		COLOR ar = {},
-		COLOR as = {},
-		
-		COLOR at = {},		
-		COLOR au = {},
-		COLOR av = {},
-		COLOR aw = {},
-		COLOR ax = {},
-
-		COLOR ay = {},
-		COLOR az = {},
-		COLOR ba = {},
-		COLOR bb = {},
-		COLOR bc = {},
-		
-		COLOR bd = {},
-		COLOR be = {},
-		COLOR bf = {},
-		COLOR bg = {},
-		COLOR bh = {},
-		
-		COLOR bi = {},
-		COLOR bj = {},
-		COLOR bk = {},
-		COLOR bl = { 0, 0, 255 },
-
-		DINT sx = 0,
-		DINT sy = 0
-	) {
-		this->position.x = sx;
-		this->position.y = sy;
-		this->pixel[0]._set(0, 0, a);
-		this->pixel[1]._set(1, 0, b);
-		this->pixel[2]._set(2, 0, c);
-		this->pixel[3]._set(3, 0, d);
-		this->pixel[4]._set(4, 0, e);
-		this->pixel[5]._set(5, 0, f);
-		this->pixel[6]._set(6, 0, g);
-		this->pixel[7]._set(7, 0, h);
-
-		this->pixel[8]._set(0, 1, i);
-		this->pixel[9]._set(1, 1, j);
-		this->pixel[10]._set(2, 1, k);
-		this->pixel[11]._set(3, 1, l);
-		this->pixel[12]._set(4, 1, m);
-		this->pixel[13]._set(5, 1, n);
-		this->pixel[14]._set(6, 1, o);
-		this->pixel[15]._set(7, 1, p);
-
-		this->pixel[16]._set(0, 2, q);
-		this->pixel[17]._set(1, 2, r);
-		this->pixel[18]._set(2, 2, s);
-		this->pixel[19]._set(3, 2, t);
-		this->pixel[20]._set(4, 2, u);
-		this->pixel[21]._set(5, 2, v);
-		this->pixel[22]._set(6, 2, w);
-		this->pixel[23]._set(7, 2, x);
-
-		this->pixel[24]._set(0, 3, y);
-		this->pixel[25]._set(1, 3, z);
-		this->pixel[26]._set(2, 3, aa);
-		this->pixel[27]._set(3, 3, ab);
-		this->pixel[28]._set(4, 3, ac);
-		this->pixel[29]._set(5, 3, ad);
-		this->pixel[30]._set(6,	3, ae);
-		this->pixel[31]._set(7, 3, af);
-
-		this->pixel[32]._set(0, 4, ag);
-		this->pixel[33]._set(1, 4, ah);
-		this->pixel[34]._set(2, 4, ai);
-		this->pixel[35]._set(3, 4, aj);
-		this->pixel[36]._set(4, 4, ak);
-		this->pixel[37]._set(5, 4, al);
-		this->pixel[38]._set(6, 4, am);
-		this->pixel[39]._set(7, 4, an);
-
-		this->pixel[40]._set(0, 5, ao);
-		this->pixel[41]._set(1, 5, ap);
-		this->pixel[42]._set(2, 5, aq);
-		this->pixel[43]._set(3, 5, ar);
-		this->pixel[44]._set(4, 5, as);
-		this->pixel[45]._set(5, 5, at);
-		this->pixel[46]._set(6, 5, au);
-		this->pixel[47]._set(7, 5, av);
-
-		this->pixel[48]._set(0, 6, aw);
-		this->pixel[49]._set(1, 6, ax);
-		this->pixel[50]._set(2, 6, ay);
-		this->pixel[51]._set(3, 6, az);
-		this->pixel[52]._set(4, 6, ba);
-		this->pixel[53]._set(5, 6, bb);
-		this->pixel[54]._set(6, 6, bc);
-		this->pixel[55]._set(7, 6, bd);
-
-		this->pixel[56]._set(0, 7, be);
-		this->pixel[57]._set(1, 7, bf);
-		this->pixel[58]._set(2, 7, bg);
-		this->pixel[59]._set(3, 7, bh);
-		this->pixel[60]._set(4, 7, bi);
-		this->pixel[61]._set(5, 7, bj);
-		this->pixel[62]._set(6, 7, bk);
-		this->pixel[63]._set(7, 7, bl);
-	};
-	
-	~SPRITE() {};
 
 
-	PIXEL pixel[64];
-	DIMENSION position;
 
+	SPRT() {};
 
-	PIXEL _get(DINT x = 0, DINT y = 0) {
-		for (DINT p = 0; p < 64; p++) {
-			if (this->pixel[p].x == x && this->pixel[p].y == y) return this->pixel[p];
+	~SPRT(){};
+	/*
+	SPRT(std::initializer_list<COLOR> colors = {}, DINT width = 0, DINT height = 0) {
+		COLORS clrs = colors;
+		DINT c = 0;
+		this->size.w = width;
+		this->size.h = height;
+		for (DINT x = 0; x < width; x++) {
+			for (DINT y = 0; y < height; y++) {
+				this->pixels._add({ x, y, clrs[c] });
+				c++;
+			}
 		}
-
-		PIXEL pixel = {};
-		return pixel;
 	}
+	*/
+	CHART <PIXEL> pixels;
+	DIMENSION size;
 
-	void _position(DINT x, DINT y){
-		this->position.x = x;
-		this->position.y = y;
+	void _draw(HDC tool, DINT x, DINT y, DINT scale = 2) {
+		DINT px, py;
+		for (DINT p = 0; p < this->pixels.size; p++) {
+			if (this->pixels.exist[p]) {
+				if(this->pixels.item[p].color.exist) {
+					px = x + this->pixels.item[p].x * scale;
+					py = y + this->pixels.item[p].y * scale;
+					this->pixels.item[p]._scale(tool, px, py, scale);
+				}
+			}
+		}
 	}
-
 };
 
-struct ANIMATION {
-	ANIMATION(DINT total = 0, SPRITE one = {}, SPRITE two = {}, SPRITE three = {}, SPRITE four = {}) {
-		this->current = 0;
-		this->total = total;
-		this->stage[0] = one;
-		this->stage[1] = two;
-		this->stage[2] = three;
-		this->stage[3] = four;
+struct ANM {
+	ANM(std::initializer_list<SPRT> sprites) {
+		HOLDER<SPRT> sprts = sprites;
+		for (this->length = 0; this->length < sprts._size(); this->length++) {
+			this->sprites << sprts[this->length];
+		}
+		this->stage = 0;
 	};
-	~ANIMATION() {};
-
-	SPRITE stage[4];
-	DINT current, total;
+	ANM() {
+		this->length = 0;
+		this->stage = 0;
+	};
+	~ANM() {};
+	CHART<SPRT> sprites;
+	DINT length, stage;
 };
 
-struct MODEL {
-	MODEL() {
-		this->style = 0;
+struct MDL {
+	MDL() {
+		this->scale = 2;
 		this->facing = 0;
 		this->collision = 0;
+		this->type = 0;
 	};
-	~MODEL() {};
-	DIMENSION position, to, boundary, client, previous, original;
-	DINT style, facing, collision;
-	SPRITE sprite;
-	ANIMATION animation;
+	~MDL() {};
 
-	void _set(DINT x, DINT y, DINT w, DINT h, DINT size) {
-		DIMENSION dimension;
-		dimension.x = x;
-		dimension.y = y;
-		dimension.w = w;
-		dimension.h = h;
-		dimension.size = size;
-		this->position._set(dimension);
-		this->to._set(dimension);
-		this->boundary._set(dimension);
-		this->original._set(dimension);
-		this->previous._set(dimension);
-		//this->client._set(dimension);
-		this->facing = 0;
+	ANM animation;
+	DIMENSION position, to;
+	DINT scale, facing, collision, type;
+
+
+	void _set(DINT x, DINT y, DINT scale, DINT w, DINT h) {
+		DIMENSION set;
+		set.x = x;
+		set.y = y;
+		set.w = w;
+		set.h = h;
+		set.size = scale;
+		this->position._set(set);
+		this->to._set(set);
 	}
 
-	void _animate(HDC tool) {
-		DINT px = 0, py = 0;
-		PIXEL pixel = {};
-		SPRITE sprite = this->animation.stage[this->animation.current];
-		COLOR collision = {};
+	void _draw(HDC tool) {
+		SPRT sprite = this->animation.sprites[this->animation.stage];
+		DINT px, py;
+		COLOR collision;
+		PIXEL pixel;
 		switch (this->collision) {
 		default:
 			break;
@@ -576,69 +1009,150 @@ struct MODEL {
 			collision = ENGINE_COLOR_FACING;
 			break;
 		case 1:
-			collision = R;
+			switch (this->type) {
+			default:
+				break;
+			case ENGINE_TYPE_CREATURE:
+				collision = R;
+				break;
+			case ENGINE_TYPE_RESOURCE:
+				collision = G;
+				break;
+			}
 			break;
 		}
-		for (DINT w = 0; w < this->position.w; w++) {
-			for (DINT h = 0; h < this->position.h; h++) {
-				pixel = sprite._get(w, h);
-				switch (this->facing) {
-				default:
-					break;
-				case 2:
-					if (h == this->position.h - 1) pixel.color._set(collision);
-					break;
-				case 4:
-					if (w == 0) pixel.color._set(collision);
-					break;
-				case 6:
-					if (w == this->position.w - 1) pixel.color._set(collision);
-					break;
-				case 8:
-					if (h == 0) pixel.color._set(collision);
-					break;
-				}
-
-				if (pixel.color.exist == 1) {
-					px = this->position.x + (this->position.size * w);
-					py = this->position.y + (this->position.size * h);
-					pixel._scale(tool, px, py, this->position.size);
+		for (DINT p = 0; p < sprite.pixels.size; p++) {
+			if (sprite.pixels.exist[p]) {
+				if (sprite.pixels[p].x < this->position.w && sprite.pixels[p].y < this->position.h) {
+					pixel = sprite.pixels[p];
+					switch (this->facing) {
+					default:
+						break;
+					case 2:
+						if (pixel.y == this->position.h - 1) pixel.color._set(collision);
+						break;
+					case 4:
+						if (pixel.y == 0) pixel.color._set(collision);
+						break;
+					case 6:
+						if (pixel.x == this->position.w - 1) pixel.color._set(collision);
+						break;
+					case 8:
+						if (pixel.y == 0) pixel.color._set(collision);
+						break;
+					}
+					if (pixel.color.exist) {
+						px = this->position.x + sprite.pixels[p].x * this->position.size;
+						py = this->position.y + sprite.pixels[p].y * this->position.size;
+						pixel._scale(tool, px, py, this->position.size);
+					}
 				}
 			}
-		}
+		};
+		//this->animation.sprites[this->animation.stage]._draw(tool, this->position.x, this->position.y, this->position.size);
+		this->animation.stage++;
+		if (this->animation.stage == this->animation.length) this->animation.stage = 0;
+	}
 
+};
+
+struct DISPLAY {
+	DISPLAY(DINT width = 0, DINT height = 0) {
+		std::cout << "\nDisplay constructor.";
+		COLOR color = LGR;
+		DINT p = 0;
+		TIME time;
+		time._clock();
+		this->pixels = width * height + 1;
+		for (DINT x = 0; x < width; x++) {
+			for (DINT y = 0; y < height; y++) {
+				//std::cout << "\nAdding pixel " << p;
+				PIXEL pixel = { x, y, color };
+				this->pixels << pixel;
+				p++;
+				
+			}
+		}
+		std::cout << "\nDisplay constructed. " << time._difference(time);
+	}
+	DISPLAY() {};
+	~DISPLAY() {};
+
+	CHART<PIXEL> pixels;
+
+};
+
+struct BOX {
+	BOX(double x, double y, double size, SPOT angle, COLOR color = {}) {
+		this->x = x;
+		this->y = y;
+		this->size = size;
+		this->angle = angle;
+		this->outline = color;
+		this->_construct();
+	};
+	BOX() {};
+	~BOX() {};
+
+	double x, y, size;
+	SPOT angle;
+	COLOR outline;
+	CHART <SPOT> point;
+
+	void _outline(SPOT spot) {
+		this->point << spot;
+	}
+
+	void _construct() {
+		this->point._close();
+		this->_outline({ 0.0, 0.0, 0.0 });
+		this->_outline({ this->size, 0.0, 0.0 });
+		this->_outline({ this->size, this->size, 0.0 });
+		this->_outline({ 0.0, this->size, 0.0 });
+
+		this->_outline({ 0.0, 0.0, this->size });
+		this->_outline({ this->size, 0.0, this->size });
+		this->_outline({ this->size, this->size, this->size });
+		this->_outline({ 0.0, this->size, this->size });
+	}
+
+	LINE _line(DINT pa, DINT pb) {
+		LINE line = {};
+		if (pa >= this->point.length || pb >= this->point.length) return line;
+		SPOT a = this->point[pa], b = this->point[pb];
+		line = { this->outline, this->x + a.x + a.z * MATH::_sin(this->angle.x), this->y + a.y + a.z * MATH::_cos(this->angle.y), this->x + b.x + b.z * MATH::_sin(this->angle.x), this->y + b.y + b.z * MATH::_sin(this->angle.y)};
+		return line;
 	}
 
 	void _draw(HDC tool) {
-		DINT px = 0, py = 0;
-		PIXEL pixel = {};
-		COLOR color = {};
-		for (DINT w = 0; w < this->position.w; w++) {
-			for (DINT h = 0; h < this->position.h; h++) {
-				pixel = this->sprite._get(w, h);
-				switch (this->facing) {
-				default:
-					break;
-				case 2:
-					if (h == this->position.h - 1) pixel.color._set(ENGINE_COLOR_FACING);
-					break;
-				case 4:
-					if (w == 0) pixel.color._set(ENGINE_COLOR_FACING);
-					break;
-				case 6:
-					if (w == this->position.w - 1) pixel.color._set(ENGINE_COLOR_FACING);
-					break;
-				case 8:
-					if (h == 0) pixel.color._set(ENGINE_COLOR_FACING);
-					break;
-				}
-				if (pixel.color.exist == 1) {
-					px = this->position.x + (this->position.size * w);
-					py = this->position.y + (this->position.size * h);
-					pixel._scale(tool, px, py, this->position.size);
-				}
-			}
+		LINE line;
+		CHART <LINE> out;
+		line = this->_line(0, 1);
+		out << line;
+		line = this->_line(1, 2);
+		out << line;
+		line = this->_line(2, 3);
+		out << line;
+		line = this->_line(3, 0);
+		out << line;
+		line = this->_line(4, 0);
+		out << line;
+		line = this->_line(5, 1);
+		out << line;
+		line = this->_line(6, 2);
+		out << line;
+		line = this->_line(7, 3);
+		out << line;
+		line = this->_line(4, 5);
+		out << line;
+		line = this->_line(5, 6);
+		out << line;
+		line = this->_line(6, 7);
+		out << line;
+		line = this->_line(7, 4);
+		out << line;
+		for (DINT l = 0; l < out.length; l++) {
+			out[l]._draw(tool);
 		}
-
 	}
 };
