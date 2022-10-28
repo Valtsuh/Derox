@@ -1,6 +1,6 @@
 /*
 *
-*		Created by Jussi 'Valtsu(h)' Männistö
+*		Created by Jussi 'Valtsu(h)' MÃ¤nnistÃ¶
 *
 *		Version notes
 *
@@ -11,6 +11,23 @@
 		[Game]
 		[Code]		
 		[Other]
+
+	0.3.1.2
+		[Game]
+			- Changed from 2D topdown view to isometric.
+			- Some tiles disabled, due to changes.
+			- Items disabled, to be reimplemented.
+			- Creature name generation redefined, now instead uses (predefined)words to create a full name.
+			- Added click function to creatures, showing a status window.
+			- Functions to zoom and move around with mouse.
+			- Saving disabled, for now.
+		[Code]
+			- Play area hard limited to 5 x 5 tiles.
+			- Polygon preparements.
+		[Other]
+			- Showing FPS(currently capped at 20 ish) at the windows top bar, along with version.
+			- Still plenty of bugs to fix(ie. creatures not disappearing correctly).
+			
 
 	0.2.1.2
 		[Game]
@@ -28,6 +45,7 @@
 		[Other]
 			- Memory optimizations and leak fixes.
 
+
 	0.1.1.2
 		[Game]
 			- Controls removed, for now.
@@ -39,12 +57,14 @@
 			- List handling updated, INDEX obsoleting LIST.
 			- Some cleaning.
 
+
 	0.0.1.2
 		[Game]
 			- Some collision detection and handling added.
 		[Code]
 			- Custom text now handles negative values.
 			- Revamp and clean up.
+
 
 	0.0.0.2
 		[Game]
@@ -53,6 +73,7 @@
 			- Added some much needed list handling.
 			- Some preparations / attempts at drawing characters(letters, numbers, etc.).
 		
+
 	0.0.0.1
 		[Game]
 			- A window with some rectangles moving.
@@ -62,6 +83,5 @@
 		[Code]
 			- A some what working program, with plenty to update.
 			- Aware of the 'F' needed to be pushed twice for it to show first time.
-
 
 
