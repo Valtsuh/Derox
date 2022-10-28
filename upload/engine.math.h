@@ -3,27 +3,24 @@ struct MATH {
 	MATH() {
 	};
 	~MATH() {};
-	static DINT _ntop(SINT value = -1) {
-		DINT p = 0;
-		if (value < 0) {
-			do {
-				p++;
-				value++;
-			} while (value < 0);
-		}
-		else {
-			p = (SINT)value;
-		}
-		return p;
+	static SINT _polar(SINT value) {
+		return (-1) * value;
+	} 
+
+	static double _dpolar(double value = 1.0) {
+		return (-1) * value;
 	}
 
-	static SINT _pton(DINT value = 1) {
-		SINT n = 0;
-		do {
-			n--;
-			value--;
-		} while (value > 0);
-		return n;
+
+	static SINT _gap(SINT value = 0, SINT range = -1) {
+		DICE dice;
+		SINT a = value - range, b = value + range;
+		if (a < b) {
+			return dice._roll(a, b);
+		}
+		else {
+			return dice._roll(b, a);
+		}
 	}
 
 	static DINT _iap(DINT *values = {}) {
@@ -34,17 +31,6 @@ struct MATH {
 		}
 		return value;
 
-	}
-
-	static DINT _abs(const SINT value = -1) {
-		DINT val = 0;
-		if (value < 0) {
-			val = (-1) * value;
-		}
-		else {
-			val = value;
-		}
-		return val;
 	}
 
 	static double _dabs(const double value = -1.0) {
@@ -58,6 +44,65 @@ struct MATH {
 		return val;
 	}
 
+	static void _change(SPOT* s, double x, double y, double z) {
+		s->x += x;
+		s->y += y;
+		s->z += z;
+
+		if (s->x >= 359.0) s->x -= 359.0;
+		if (s->x <= -359.0) s->x += 359.0;
+		if (s->y >= 359.0) s->y -= 359.0;
+		if (s->y <= -359.0) s->y += 359.0;
+		if (s->z >= 359.0) s->z -= 359.0;
+		if (s->z <= -359.0) s->z += 359.0;
+	}
+
+	static void _rotate(SPOT *p, SPOT angle, DINT correction = 1) {		
+
+		if (correction) angle.y += 90.0;
+		SPOT c = { cos(angle.x), cos(angle.y), cos(angle.z) };
+		//SPOT c = { cos(MATH::_rad(angle.x)), cos(MATH::_rad(angle.y)), cos(MATH::_rad(angle.z))};
+		SPOT s = { sin(angle.x), sin(angle.y), sin(angle.z) };
+		//SPOT s = { sin(MATH::_rad(angle.x)), sin(MATH::_rad(angle.y)), sin(MATH::_rad(angle.z)) };
+		//cos._dump();
+		//sin._dump();
+		p->x = p->x * c.x + p->z * s.x;
+		//p->x = p->x * sin.x + p->y * cos.x;
+		p->y = p->y * s.y + p->x * c.y;
+		//p->x = p->x * c.x + p->y * MATH::_polar(s.x);
+
+		//p->y = p->y * cos.y + p->x * sin.y;
+
+		//p->z = p->z * sin.z + p->y * cos.z;
+		//p->y = p->y * MATH::_polar(s.y) + p->z * c.y; 
+		
+		//p->z = p->z * s.z + p->x * c.z;
+		//p->z = p->z * c.z + p->y * s.z;
+	}
+	static void _spec(SPOT *p, double angle) {
+
+		//std::cout << "\n" << p->x << ", " << p->y << ", " << p->z;
+		//p->z = (p->z == 0.0) ? (1.0) : (p->z);
+		//p->x = MATH::_clamp((p->x * angle) / (angle + p->z), -angle, angle);
+		//p->y = MATH::_clamp((p->y * angle) / (angle + p->z), -angle, angle);
+
+
+	}
+
+	static double _clamp(double val, double min, double max) {
+		if (val > max) return max;
+		if (val < min) return min;
+		return val;
+	}
+
+	static DINT _tnth(DINT a, DINT th) {
+		DINT value = a;
+		do {
+			value *= 10;
+			th--;
+		} while (th > 0);
+		return value;
+	}
 
 	static DINT _pow(const DINT a = 1, DINT b = 2) {
 		DINT value = 1;
@@ -134,6 +179,12 @@ struct MATH {
 		return value;
 	}
 
+	static DINT _cmatch(DINT number, CHART<DINT> index) {
+		for (DINT i = 0; i < index.length; i++) {
+			if (index.exist[i] && index[i] == number) return 1;
+		}
+		return 0;
+	}
 
 	static SINT _cmax(CHART<SINT> index) {
 		SINT first = index._first();
@@ -203,42 +254,6 @@ struct MATH {
 		} while (value < number);
 		//std::cout << "\nSRT: " << counter;
 		return counter;
-	}
-
-	static double _sin(double angle, double accuracy = 0.0001) {
-		double value, sinx, sinval, temp;
-		DINT den;
-		value = MATH::_rad(angle);
-		temp = value;
-		sinx = value;
-		sinval = sin(value);
-		for (DINT j = 1; accuracy <= MATH::_dabs(sinval - sinx); j++) {
-			den = 2 * j * (2 * j + 1);
-			temp = -temp * value * value / (double)den;
-			sinx += temp;
-		}
-		return sinx;
-
-	}
-
-	static double _cos(double angle, double accuracy = 0.0001) {
-		double value, temp, cosx, cosval;
-		DINT den;
-		value = MATH::_rad(angle);
-		temp = 1.0;
-		cosx = temp;
-		cosval = cos(value);
-		for (DINT j = 1; accuracy <= MATH::_dabs(cosval - cosx); j++) {
-			den = 2 * j * (2 * j - 1);
-			temp = -temp * value * value / (double)den;
-			cosx += temp;
-		}
-		return cosx;
-	}
-
-	static double _tan(double angle) {
-		return MATH::_sin(angle) / MATH::_cos(angle);
-
 	}
 
 	static double _ballCollision(double x1, double x2, double y1, double y2, double r1, double r2) {

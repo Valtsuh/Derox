@@ -1,1687 +1,999 @@
 struct GAME {
-	struct STATISTICS{
-		STATISTICS() {};
-		~STATISTICS() {};
-		COUNTER loop, fps;
-		TIME time, current, tick;
-		void _loop() {
-			this->loop.current++;
-			this->current._difference(this->time);
-			if (this->loop.current > 0 && this->current.elapsed > 0) this->fps.current = (DINT)(this->loop.current / this->current.elapsed);
-			this->tick._clock();
-		}
-
+	GAME() {
+		this->played = 0;
+		this->debug = 0;
 	};
-	struct CONFIG {
-		CONFIG() {};
-		~CONFIG() {};
+	~GAME() {};
 
-		DIMENSION map, atlas;
-	};
-	struct COLLISION {
-		COLLISION() {
-			this->current = 0;
-			this->collie = -1;
-			this->collided = 0;
-			this->type = 0;
-			this->last = -1;
+	struct CAMERA {
+		CAMERA() {
+			this->speed = 0.1;
 		};
-		~COLLISION() {};
-		DINT current, collided, type;
-		SINT collie, last;
+		POS center, offset, tile;
+		double speed;
 
 
-		void _reset() {
-			this->current = 0;
-			this->collie = -1;
-			this->collided = 0;
-			this->type = 0;
+		void _center(SINT x, SINT y) {
+
 		}
 	};
-	struct TARGET {
-		TARGET() {
-			this->unique = -1;
-			this->type = 0;
-		};
-		~TARGET() {};
-
-		SINT unique, type;
-
-		void _set(DINT unique, DINT type = 0) {
-			this->unique = unique;
-			this->type = type;
-		}
-		void _reset() {
-			this->unique = -1;
-			this->type = 0;
-		}
-	};
-	struct DUS {
-		DUS(double identifier = 0.0, const char name[] = "Undefined", DINT health = 0) {
-			this->identifier = identifier;
-			this->name._write(name);
-			this->health = health;
-			this->amount = 0;
-			this->size = this->dice._droll(5.0, 10.0);
-			this->type = this->dice._roll(0, 2);
-			this->spot = { this->dice._droll(0.0, 50.0), this->dice._droll(0.0, 50.0), 0 };
-			this->direction = this->dice._droll(-10.0, 10.0);
-			this->dice._roll(0, 3);
-			switch (this->dice.value.i) {
-			default:
-				this->color = B;
-				break;
-			case 0:
-				this->color = R;
-				break;
-			case 1:
-				this->color = G;
-				break;
-			case 2:
-				this->color = BL;
-				break;
-			case 3:
-				this->color = Y;
-				break;
+	struct TAG {
+		TAG(const char base[], PREFIX prefix, SUFFIX suffix) {
+			if (prefix.name.length > 0) {
+				this->prefix = prefix;
+				this->name._append(prefix.name.text);
 			}
-			this->angle = this->dice._droll(0, 359.0);
 
-		};
-		~DUS() {
-			this->identifier = 0.0;
-			this->name.~STRING();
-			this->health = 0;
-			this->amount = 0;
-		};
-
-		double identifier, size, angle, direction;
-		STRING name;
-		DICE dice;
-		DINT health, amount, type;
-		COLOR color;
-		SPOT spot;
-
-		void _draw(HDC tool) {
-			switch (this->type) {
-			default:
-				break;
-			case 0: {
-				CRCL circle = { 400.0 + this->spot.x, 150.0 + this->spot.y, this->size, this->angle, this->color };
-				circle._draw(tool);
-				break;
-			}
-			case 1: {
-				LINE line = { 400.0 + this->spot.x, 150.0 + this->spot.y, this->size, this->angle, this->color, 1 };
-				line._draw(tool);
-				break;
-			}
-			case 2: {
-				SQUARE square = { 400.0 + this->spot.x, 150.0 + this->spot.y, this->size * 2.0, this->angle, this->color };
-				square._draw(tool);
-				delete[] square.lines.item;
-				delete[] square.lines.exist;
-				break;
-			}
-			}
-		}
-	};
-	struct ITEM {
-		ITEM(double identifier = 0.0, const char name[] = "Undefined") {
-			this->identifier = identifier;
-			this->amount = 0;
-			this->name._write(name);
-			this->type = 0;
-		};
-		~ITEM() {
-			this->identifier = 0.0;
-			this->amount = 0;
-			this->type = 0;
-			this->name.~STRING();
-		};
-
-		double identifier;
-		DINT amount, type;
-		STRING name;
-
-		void _trash() {
-			this->~ITEM();
-			*this = {};
-		}
-	};
-	struct INVENTORY {
-		INVENTORY() {};
-		~INVENTORY() {};
-
-		CHART <ITEM> items;
-
-		
-		void _gather(ITEM item) {
-			DINT found = 0;
-			for (DINT i = 0; i < this->items.length; i++) {
-				if (this->items.exist[i] == 1) {
-					if (this->items.item[i].type == item.type) {
-						found = 1;
-						this->items.item[i].amount += item.amount;
-					}
-				}
-			}
-			if (found == 0) {
-				this->items << item;
-			}
-		}
-
-		DINT _reduce(DINT type, DINT amount) {
-			DINT found = 0;
-			for (DINT i = 0; i < this->items.length; i++) {
-				if (this->items.exist[i] == 1) {
-					if (this->items.item[i].type == type) {
-						found = 1;
-						this->items.item[i].amount -= amount;
-					}
-				}
-			}
-			return (found == 1) ? (1) : (0);
-		}
-
-		DINT _available(DINT type = 0) {
-			for (DINT i = 0; i < this->items.length; i++) {
-				if (this->items.exist[i] == 1) {
-					if (this->items.item[i].type == type) {
-						if (this->items.item[i].amount > 0) return this->items.item[i].amount;
-					}
-				}
-			}
-			return 0;
-		}
-
-		void _empty() {
-
-			for (DINT i = 0; i < this->items.length; i++) {
-				if (this->items.exist[i] == 1) {
-					this->items.item[i]._trash();
-					this->items.exist[i] = 0;
-				}
-			}
-			delete[] this->items.item;
-			delete[] this->items.exist;
-		}
-
-	};
-	struct EFFECT {
-		EFFECT() {
-			this->length = 0;
-			this->type = 0;
-			this->exist = 0;
-			this->pixel.x = 0;
-			this->pixel.y = 0;
-
-		};
-		~EFFECT() {
-			this->length = 0;
-			this->type = 0;
-			this->exist = 0;
-		};
-		DINT length, type, exist;
-		PIXEL pixel;
-	};
-	struct STATUS {
-		STATUS() {
-			this->immune = 0;
-		};
-		~STATUS() {};
-
-		DINT immune;
-	};
-	struct LIMB {
-		LIMB(double identifier = 0.0, const char name[] = "Undefined", DINT health = 0, SPRT sprite = {}) {
-			this->identifier = identifier;
-			this->name._write(name);
-			this->health.total = health;
-			this->health.current = this->health.total;
-			this->exist = 0;
-			this->sprite = sprite;
-			this->amount = (health > 0) ? (1) : (0);
-		};
-		~LIMB() {
-			this->identifier = 0.0;
-			this->name.~STRING();
-			this->health.~COUNTER();
-			this->exist = 0;
-			//this->sprite.~SPRITE();
-			this->position.~DIMENSION();
-		};
-		double identifier;
-		STRING name;
-		COUNTER health;
-		DINT exist, amount;
-		SPRT sprite;
-		DIMENSION position;
-		STATUS status;
-
-		void _loose() {
-			this->~LIMB();
-			*this = {};
-		}
-	};
-	struct CARCASS {
-		CARCASS() {};
-		~CARCASS() {
-		};
-		COUNTER health;
-		CHART <LIMB> limbs;
-		DIMENSION position;
-		void _dismantle() {
-			for (DINT l = 0; l < this->limbs.length; l++) {
-				if (this->limbs.exist[l] == 1) {
-					this->limbs.item[l]._loose();
-					this->limbs.exist[l] = 0;
-				}
-			}
-			this->health.~COUNTER();
-		}
-
-
-		DINT _health() {
-			this->health.current = 0;
-			this->health.total = 0;
-			for (DINT i = 0; i < this->limbs.length; i++) {
-				this->health.current += this->limbs[i].health.current;
-				this->health.total += this->limbs[i].health.total;
-			}
-			return this->health.current;
-		}
-
-		SINT _exist(double identifier) {
-			for (DINT i = 0; i < this->limbs.length; i++) {
-				if (this->limbs[i].identifier == identifier) return i;
-			}
-			return -1;
-		}
-	};
-	struct EXPERIENCE {
-		EXPERIENCE() {
-			this->point = {};
-			this->level = {};
-		};
-		~EXPERIENCE() {};
-		COUNTER point, level;
-
-		void _gain(DINT amount = 0) {
-			this->point._add(amount);
-			SINT up = (5 * this->level.current + 8);
-			if(this->point.current >= up){
-				if (this->point.current > up) {
-					this->point.current -= up;
-				}
-				else {
-					this->point.current = 0;
-
-				}
-				this->level._add(1);
-			}
-		} 
-	};
-	struct BASIS {
-		BASIS(double identifier = 0.0, const char name[] = "Undefined", DUS dus = {}, DINT type = 0.0, ANM animation = {}, DINT scale = 2, DINT width = 5, DINT height = 5, DINT speed = 5) {
-			this->model.animation = animation;
-			this->model.position.w = width;
-			this->model.position.h = height;
-			this->model.position.size = scale;
-			this->speed = speed;
-			this->name._write(name);
-			this->type = type;
-			this->identifier = identifier;
-			this->origin = dus;
-			this->unique = 0;
-			this->temp = -1;
-		};
-		~BASIS() {};
-
-		double identifier;
-		STRING name;
-		COUNTER health, speed;
-		DINT unique, type;
-		SINT temp;
-		MDL model;
-		DIMENSION position;
-		DICE dice;
-		DUS origin;
-		CARCASS animate;
-		COUNTER loop;
-
-		void _base(BASIS basis) {
-			this->model = basis.model;
-			this->speed = basis.speed;
-			this->type = basis.type;
-			this->name = basis.name;
-			this->origin = basis.origin;
-			this->identifier = basis.identifier;
-			this->unique = basis.unique;
-			this->dice._roll(0, 3);
-
-			switch (this->dice.value.i) {
-			default:
-				break;
-			case 0:
-				this->_develop(ENGINE_BIONIC);
-				break;
-			case 1:
-				this->_develop(ENGINE_CARCASS);
-				break;
-			case 2:
-				this->_develop(ENGINE_BOTANY);
-				break;
-			case 3:
-				this->_develop(ENGINE_MIRAGE);
-				break;
-			}
-		}
-
-
-		COLLISION _collision(DIMENSION bp) {
-			DIMENSION ap = this->model.position;
-			COLLISION collision = {};
-			switch (this->model.facing) {
-			case 2:
-				// Down
-				if (
-					ap.y + (ap.h * ap.size) > bp.y &&
-					ap.y < bp.y &&
-					ap.x < bp.x + (bp.w * bp.size) &&
-					ap.x + (ap.w * ap.size) > bp.x
-					) {
-					collision.collided = 1;
-				}
-				break;
-			case 4:
-				// Left
-				if (
-					ap.x <= bp.x + (bp.w * bp.size) &&
-					ap.x + (ap.w * ap.size) > bp.x &&
-					ap.y + (ap.h * ap.size) > bp.y &&
-					ap.y < bp.y + (bp.h * bp.size)
-					) {
-					collision.collided = 1;
-				}
-				break;
-			case 6:
-				// Right
-				if (
-					ap.x + (ap.w * ap.size) >= bp.x &&
-					ap.x < bp.x &&
-					ap.y < bp.y + (bp.h * bp.size) &&
-					ap.y + (ap.h * ap.size) > bp.y
-					) {
-					collision.collided = 1;
-				}
-				break;
-			case 8:
-				// Up
-				if (
-					ap.y < bp.y + (bp.h * bp.size) &&
-					ap.y + (ap.h * ap.size) > bp.y &&
-					ap.x + (ap.w * ap.size) > bp.x &&
-					ap.x < bp.x + (bp.w * bp.size)
-					) {
-					collision.collided = 1;
-				}
-				break;
-			}
-			return collision;
-		}
-
-		void _develop(LIMB limb) {
-			SINT exist = this->animate._exist(limb.identifier);
-			if (exist >= 0) {
-				this->animate.limbs[exist].amount++;
-				this->animate.limbs[exist].health.current += limb.health.total;
-				this->animate.limbs[exist].health.total += limb.health.total;
+			this->base = base;
+			if (this->name.length > 0) {
+				this->name._space(base);
 			}
 			else {
-				this->animate.limbs << limb;
+				this->name._append(base);
 			}
-			this->health.total += limb.health.total;
+
+			if (suffix.name.length > 0) {
+				this->suffix = suffix;
+				this->name._space(suffix.name.text);
+			}
+			this->id = -1;
+		};
+		TAG() {
+			this->id = -1;
+		};
+
+		STRING name;
+		STRING base;
+		PREFIX prefix;
+		SUFFIX suffix;
+		SINT id;
+
+		void _generate() {
+			DICE dice;
+			*this = { GAME::library.base[dice._roll(0, GAME::library.base.length - 1)].text, GAME::library.prefix[dice._roll(0, GAME::library.prefix.length)], GAME::library.suffix[dice._roll(0, GAME::library.suffix.length - 1)] };
+
 		}
 	};
-	struct RESOURCE : BASIS {
-		RESOURCE() {
-			this->item.amount = 0;
-			this->item.identifier = this->identifier;
+
+	struct TILE {
+		TILE() {
+			this->occupee = -1;
+			this->type = ENGINE_TYPE_TILE;
+			this->base = ENGINE_TYPE_TILE;
+			this->steps = 0;
+			this->unstepped = this->dice._roll(0, (DINT)(ENGINE_DEVELOP_ROAD_DECAY / 2));
+			//std::cout << "\n>Unstepped: " << this->unstepped;
+			this->moisture = this->dice._droll(-0.035, 0.055, 0.0001);
+			//std::cout << "\n>Moisture: " << this->moisture;
+			this->raining = 0;
 		};
-		~RESOURCE() {
-		};
-		ITEM item;
+		BIOME biome;
+		SPRITE graphic;
+		POS position, center, origin, id;
+		DINT base, type, unstepped, raining;
+		SINT occupee, steps;
+		double moisture;
+		DICE dice;
 
-		void _draw(HDC tool) {
-			this->model._draw(tool);
-		}
 
-		void _decay() {
-			if (this->animate.limbs.length > 0) {
-				for (DINT i = 0; i < this->animate.limbs.length; i++) {
-					delete[] this->animate.limbs[i].sprite.pixels.exist;
-					delete[] this->animate.limbs[i].sprite.pixels.item;
-				}
-				delete[] this->animate.limbs.item;
-				delete[] this->animate.limbs.exist;
-			}
-			if (this->model.animation.sprites.length > 0) {
-				for (DINT i = 0; i < this->model.animation.sprites.length; i++) {
-					delete[] this->model.animation.sprites[i].pixels.exist;
-					delete[] this->model.animation.sprites[i].pixels.item;
-				}
-				delete[] this->model.animation.sprites.item;
-				delete[] this->model.animation.sprites.exist;
-			}
-			//this->model.~MODEL();
-		}
-	};
-	struct CREATURE : BASIS {
-		CREATURE() {
-		};
-		~CREATURE() {
-
-		};
-		EXPERIENCE experience;
-		COLLISION collision;
-		INVENTORY inventory;
-		EFFECT effect;
-		CHART <DUS> mutation;
-		TARGET target;
-		TIME appearance;
-
-		void _update() {
-			this->loop.current++;
-			DUS* d;
-			for (DINT m = 0; m < this->mutation.length; m++) {
-				if (this->mutation.exist[m]) {
-					d = &this->mutation[m];
-					d->angle += d->direction;
-					if (d->angle >= 360.0) {
-						d->angle -= 360.0;
-					}
-					else {
-						if (d->angle <= -360.0) {
-							d->angle += 360.0;
-						}
-					}
-
-				}
-			}
-		}
-		void _use(DINT type = 0) {
+		void _set(DINT type) {
+			this->type = type;
 			switch (type) {
 			default:
+				this->graphic = GAME::library.sprite[GAME::library._search("tile-base-block")];
 				break;
-			case ENGINE_TYPE_RESOURCE_BERRY:
-				this->_heal(2);
-				this->inventory._reduce(type, 1);
+			case ENGINE_TYPE_TILE_DESOLATE:
+				this->graphic = GAME::library.sprite[GAME::library._search("tile-base-desolate")];
+				break;
+			case ENGINE_TYPE_TILE_MEADOW:
+				this->graphic = GAME::library.sprite[GAME::library._search("tile-base-grass")];
+				break;
+			case ENGINE_TYPE_TILE_ROAD:
+				this->graphic = GAME::library.sprite[GAME::library._search("tile-base-road")];
+				break;
+			case ENGINE_TYPE_TILE_GROWTH:
+				this->graphic = GAME::library.sprite[GAME::library._search("tile-base-growth")];
+				break;
+			case ENGINE_TYPE_TILE_WATER:
+				this->graphic = GAME::library.sprite[GAME::library._search("tile-base-water")];
 				break;
 			}
 		}
 
-		void _draw(HDC tool) {
+	};
 
-			// Health
-			DINT px = 0, py = 0;
-			PIXEL pixel = {};
-			COLOR h;
-			SPRT sprite = this->model.animation.sprites[this->model.animation.stage];
-			if (this->health.total > 0) {
-				double temp = (double)this->health.total / (double)this->model.position.w;
-				for (DINT w = 0; w < this->model.position.w; w++) {
-					px = this->model.position.x + w * this->model.position.size;
-					py = this->model.position.y - (1 * this->model.position.size);
-
-					if (this->effect.exist == 1) {
-						switch (this->effect.type) {
-						default:
-							switch (this->dice._roll(0, 2)) {
-							default:
-								h = G;
-								break;
-							case 1:
-								h = DG;
-								break;
-							case 2:
-								h = LG;
-								break;
-							}
-							break;
-						case ENGINE_TYPE_EFFECT:
-							break;
-						}
-					}
-					else {
-						h = G;
-					}
-
-					if (this->health.current == this->health.total) {
-						pixel.color._set(h);
-					}
-					else {
-						if (((double)w + 0.1) * temp <= (double)this->health.current) {
-							pixel.color._set(h);
-						}
-						else {
-							pixel.color._set(R);
-						}
-					}
-					pixel._scale(tool, px, py, this->model.position.size);
-				}
+	struct ABILITY {
+		struct EFFECT {
+			EFFECT(DINT type) {
+				this->type = type;
+			};
+			EFFECT() {
+				this->type = 0;
+			};
+			DINT type;
+		};
+		ABILITY(const char name[], const char sprite[], double cost, DINT duration, double chance, DINT effect, DINT cast) {
+			this->name = name;
+			this->cost = cost;
+			this->duration = duration;
+			this->chance = chance;
+			this->effect = effect;
+			this->cast = cast;
+			this->chance = chance;
+			this->movement.speed = 0.0;
+			switch (cast) {
+			default:
+			case ENGINE_TYPE_CAST_INSTANT:
+				this->display = 4;
+				this->speed = 0.0;
+				break;
+			case ENGINE_TYPE_CAST_RANGE:
+				this->display = -1;
+				this->speed = 0.15 * GAME::MAP::scale;
+				break;
 			}
+			this->graphic = GAME::library.animation[GAME::library._asearch(sprite)];
+			this->target = -1;
+		};
+		ABILITY() {
+			this->cost = 0;
+			this->duration = 0;
+			this->effect = 0;
+			this->cast = 0;
+			this->chance = 0.0;
+			this->display = 0;
+			this->speed = 0.0;
+			this->target = -1;
+		};
+		STRING name;
+		ANIMATION graphic;
+		EFFECT effect;
+		DINT duration, cast;
+		SINT display, target;
+		double chance, speed, cost;
+		MOVEMENT movement;
 
-			// Sprite
-			this->model._draw(tool);
+	};
 
-			// Effect
-			if (this->effect.exist == 1) {
-				px = this->model.position.x + this->effect.pixel.x * this->model.position.size;
-				py = this->model.position.y + this->effect.pixel.y * this->model.position.size;
-				this->effect.pixel.color = DG;
-				this->effect.pixel._scale(tool, px, py, this->model.position.size);
-				this->effect.pixel.x++;
-				//this->effect.pixel.y++;
-				if (this->effect.pixel.x == this->model.position.w) this->effect.pixel.x = 0;
-				if (this->effect.pixel.y == this->model.position.h) this->effect.pixel.y = 0;
-			}
-		}
+	struct CONTRACT {
+		//
+	};
 
-		DINT _distance(BASIS basis) {
+	struct BEHAVIOUR {
+		BEHAVIOUR() {
+			this->discover = 0;
+			this->generation = 0;
+			this->target = -1;
+			this->contest.current = 0;
+		};
 
-		}
-		void _gain(DUS dus) {
-			SINT has = this->_has(dus);
-			if (has >= 0) {
-				this->mutation[has].amount++;
+		DINT discover, generation;
+		COUNTER contest;
+		POS aware;
+		SINT target;
+		FIGURE hunger;
+
+
+	};
+
+	struct MOVE {
+		MOVE() {
+			this->ready = 0.0;
+		};		
+		double ready;
+
+	};
+
+	struct DUS {
+		DUS(double identifier, DINT type, const char name[]) {
+			this->id = identifier;
+			this->type = type;
+			this->name = name;
+		};
+		DUS() {
+			this->type = 0;
+			this->id = 0.0;
+		};
+
+		DINT type;
+		STRING name;
+		double id;
+
+	};
+
+	struct CREATURE {
+		CREATURE(STRING name, DINT gender = -1) {
+			if (name.length == 0) {
+				this->tag._generate();
 			}
 			else {
-				this->mutation << dus;
+				this->tag.name = name.text;
 			}
-			this->health.total += dus.health;
-			//switch(dus.)
-		}
-
-		SINT _has(DUS dus) {
-			for (DINT m = 0; m < this->mutation.size; m++) {
-				if (this->mutation.exist[m] == 1) {
-					if (this->mutation.item[m].identifier == dus.identifier) return m;
-				}
-			}
-			return -1;
-		}
-
-		void _vanish() {
-			if (this->inventory.items.length > 0) {
-				delete[] this->inventory.items.item;
-				delete[] this->inventory.items.exist;
-			}
-			//this->inventory.items._clear();
-			if (this->mutation.length > 0) {
-				delete[] this->mutation.item;
-				delete[] this->mutation.exist;
-			}
-
-			if (this->animate.limbs.length > 0) {
-				for (DINT i = 0; i < this->animate.limbs.length; i++) {
-					delete[] this->animate.limbs[i].sprite.pixels.exist;
-					delete[] this->animate.limbs[i].sprite.pixels.item;
-				}
-				delete[] this->animate.limbs.item;
-				delete[] this->animate.limbs.exist;
-			}
-			if (this->model.animation.sprites.length > 0) {
-				for (DINT i = 0; i < this->model.animation.sprites.length; i++) {
-					delete[] this->model.animation.sprites[i].pixels.exist;
-					delete[] this->model.animation.sprites[i].pixels.item;
-				}
-				delete[] this->model.animation.sprites.item;
-				delete[] this->model.animation.sprites.exist;
-			}
-			//this->mutation._clear();
-
-
-		}
-		void _heal(DINT amount) {
-			if (this->health.current < this->health.total) {
-				for (DINT i = 0; i < this->animate.limbs.length; i++) {
-					if (this->animate.limbs.exist[i]) {
-						LIMB* l = &this->animate.limbs[i];
-						if (l->health.current < l->health.total) {
-							l->health.current += amount;
-							if (l->health.current > l->health.total) l->health.current = l->health.total;
-							break;
-						}
-					}
-				}
-				this->health.current = this->animate._health();
-			}
-		}
-		void _damage(DINT amount) {
-			SINT identifier = -1;
-			LIMB* limb = {};
-			do {
-				identifier = -1;
-				this->dice._roll(0, this->animate.limbs.length);
-				if (this->animate.limbs.exist[this->dice.value.i]) {
-					limb = &this->animate.limbs[this->dice.value.i];
-					if (limb->health.current > 0) {
-						if (limb->status.immune != 1) {
-							identifier = this->dice.value.i;
-						}
-					}
-				}
-				
-			} while (identifier == -1);
-
-			limb->health.current -= amount;
-			//if (limb->health.current < 0) limb->health.current = 0;
-			this->health.current = this->animate._health();
-
-		}
-	};
-	struct TERRAIN {
-		TERRAIN() {
-			this->type = 0;
-			this->directed = 0;
-			//this->sprite = ENGINE_MAP_BACKGROUND_NONE;
-			this->count = 0;
-		};
-		~TERRAIN() {
-			this->type = 0;
-			this->directed = 0;
-			/*
-			this->sprite.~SPRITE();
-			this->n.~SPRITE();
-			this->s.~SPRITE();
-			this->w.~SPRITE();
-			this->e.~SPRITE();
-			*/
-		};
-		DIMENSION position, measure;
-		DINT type, directed, count;
-		GROUND sprt;
-
-	};
-	struct MAP {
-		MAP() {
-			this->count = 0;
-		};
-		~MAP() {};
-
-		DICE dice;
-		ITEM loot;
-		DIMENSION measure, position;
-		CHART <TERRAIN> terrain;
-		DINT count;
-		TIME timer;
-		void _set() {
-			TERRAIN *terrain;
-			DINT count = 0;
-			this->timer._clock();
-			this->terrain = this->position.w * this->position.h;
-			for (DINT x = 0; x < this->position.w; x++) {
-				for (DINT y = 0; y < this->position.h; y++) {
-					terrain = new TERRAIN;					
-					switch (this->dice._roll(0, 6)) {
-					default:
-						terrain->type = ENGINE_TYPE_TILE_DESOLATE;
-						terrain->sprt.color = LBR;
-						break;
-					case 2:
-						terrain->type = ENGINE_TYPE_TILE_MEADOW;
-						terrain->sprt.color = G;
-						break;
-					case 4:
-						terrain->type = ENGINE_TYPE_TILE_SWAMP;
-						terrain->sprt.color = BLG;
-						break;
-					case 5:
-						terrain->type = ENGINE_TYPE_TILE_WATER;
-						terrain->sprt.color = BL;
-						break;
-					}
-					terrain->sprt._set(terrain->type, -1);
-					//terrain->sprite._position(0, 0);
-					terrain->measure.x = x;
-					terrain->measure.y = y;
-					terrain->position.x = x;
-					terrain->position.y = y;
-					terrain->position.w = this->measure.x + terrain->measure.x * (this->measure.size * terrain->sprt.size.w);
-					terrain->position.h = this->measure.y + terrain->measure.y * (this->measure.size * terrain->sprt.size.h);
-					terrain->count = count + (this->count * (this->position.w * this->position.h));
-					this->terrain << *terrain;
-					delete terrain;
-					count++;
-				}
-			}
-			/*
-			DINT test = this->dice._roll(1, 2);
-			SINT x = this->dice._roll(0, this->position.w - 1);
-			SINT y = this->dice._roll(0, this->position.h - 1);
-			DINT tile = 0;
-			DINT type = ENGINE_TYPE_TILE_TEST;
-			COLOR c = LGR;
-			TERRAIN* current = this->_get(x, y);
-			current->type = type;
-			current->sprt._color(c);
-			std::cout << "\n>" << current->position.x << ", " << current->position.y;
-			std::cout << " - " << x << ", " << y;
-			for(DINT tile = 0; tile < test; tile++){
-				switch (this->dice._roll(1, 4)) {
+			this->current = 0;
+			this->from = 0;
+			this->strength = { "Strength", "STR", this->dice._roll(2, 5) };
+			this->agility = { "Agility", "AGI", this->dice._roll(2, 5) };
+			this->guard = { "Guard", "GRD", this->dice._roll(2, 5) };
+			this->charisma = { "Charisma", "CMA", this->dice._roll(0, 5) };
+			this->sense = { "Sense", "SNS", this->dice._roll(0, 5) };
+			this->energy = { "Energy", "EGY", this->dice._roll(2, 5) + this->agility.point.total };
+			this->health = { "Health", "HLT", this->dice._roll(10, 20) };
+			this->behaviour.contest.total = 10 + this->sense.point.total;
+			switch (gender) {
+			default:
+				switch (this->dice._roll(0, 1)) {
 				default:
+					this->sex.gender = { "Unknown", "NA", 2 };
+					break;
+				case 0:
+					this->sex.gender = { "Female", "F", 0 };
 					break;
 				case 1:
-					x = current->position.x + 1;
-					y = current->position.y - 1;
-					current = this->_get(x, y);
-					if (current->type != -1) {
-						current->type = ENGINE_TYPE_TILE_TEST;
-						current->sprt._color(c);
-					}
-					else {
-						//current->position.x = x - 1;
-						//current->position.y = y + 1;
-					}
-
+					this->sex.gender = { "Male", "M", 1 };
 					break;
-				case 4:
-					x = current->position.x - 1;
-					y = current->position.y;
-					current = this->_get(x, y);
-					if (current->type != -1) {
-						current->type = ENGINE_TYPE_TILE_TEST;
-						current->sprt._color(c);
-					}
-					else {
-						//current->position.x = x - 1;
-					}
-				}
-				std::cout << "\n>" << current->position.x << ", " << current->position.y;
-				std::cout << " - " << x << ", " << y;
-			}
-			system("pause");
-			*/
-			TERRAIN *tr;
-			for (DINT t = 0; t < this->terrain.length; t++) {
-				if (this->terrain.exist[t]) {
-					tr = &this->terrain[t];
-					SINT pos = -1;
-					SINT w = this->_type(tr->position.x - 1, tr->position.y), e = this->_type(tr->position.x + 1, tr->position.y);
-					SINT n = this->_type(tr->position.x, tr->position.y - 1), s = this->_type(tr->position.x, tr->position.y + 1);
-					SINT nw = this->_type(tr->position.x - 1, tr->position.y - 1), ne = this->_type(tr->position.x + 1, tr->position.y - 1);
-					SINT sw = this->_type(tr->position.x - 1, tr->position.y + 1), se = this->_type(tr->position.x + 1, tr->position.y + 1);
-					
-					if (n == tr->type) {
-						if (s == tr->type) {
-							if (e == tr->type) {
-								if (w == tr->type) {
-									if (nw != tr->type) {
-										if (ne != tr->type) {
-											if (sw != tr->type) {
-												if (se != tr->type) {
-													tr->sprt._set(tr->type, 501);
-												}
-												else {
-													tr->sprt._set(tr->type, 502);
-												}
-											}
-											else {
-												if (se == tr->type) {
-													tr->sprt._set(tr->type, 503);
-												}
-												else {
-													tr->sprt._set(tr->type, 504);
-												}
-											}
-										}
-										else {
-											if (sw == tr->type) {
-												if (se == tr->type) {
-													tr->sprt._set(tr->type, 505);
-												}
-												else {
-													tr->sprt._set(tr->type, 506);
-												}
-											}
-											else {
-												if (se == tr->type) {
-													tr->sprt._set(tr->type, 507);
-												}
-												else {
-													tr->sprt._set(tr->type, 508);
-												}
-											}
-										}
-									}
-									else {
-										if (ne == tr->type) {
-											if (sw == tr->type) {
-												if (se == tr->type) {
-													//tr->sprt._set(tr->type, 509); center (5)
-												}
-												else {
-													tr->sprt._set(tr->type, 509);
-												}
-											}
-											else {
-												if (se == tr->type) {
-													tr->sprt._set(tr->type, 510);
-												}
-												else {
-													tr->sprt._set(tr->type, 511);
-												}
-											}
-										}
-										else {
-											if (sw == tr->type) {
-												if (se == tr->type) {
-													tr->sprt._set(tr->type, 512);
-												}
-												else {
-													tr->sprt._set(tr->type, 513);
-												}
-											}
-											else {
-												if (se == tr->type) {
-													tr->sprt._set(tr->type, 514);
-												}
-												else {
-													tr->sprt._set(tr->type, 515);
-												}
-											}
-										}
-									}
-								}
-								else {
-									if (ne == tr->type) {
-										if (se == tr->type) {
-											tr->sprt._set(tr->type, 4);
-										}
-										else {
-											tr->sprt._set(tr->type, 41);
-										}
-									}
-									else {
-										if (se == tr->type) {
-											tr->sprt._set(tr->type, 42);
-										}
-										else {
-											tr->sprt._set(tr->type, 43);
-										}
-									}
-								}
-							}
-							else {
-								if (w == tr->type) {
-									if (nw == tr->type) {
-										if (sw == tr->type) {
-											tr->sprt._set(tr->type, 6);
-										}
-										else {
-											tr->sprt._set(tr->type, 61);
-										}
-									}
-									else {
-										if (sw == tr->type) {
-											tr->sprt._set(tr->type, 62);
-										}
-										else {
-											tr->sprt._set(tr->type, 63);
-										}
-									}
-								}
-								else {
-									tr->sprt._set(tr->type, 101);
-								}
-							}
-						}
-						else {
-							if (s != tr->type) {
-								if (e != tr->type) {
-									if (w != tr->type) {
-										tr->sprt._set(tr->type, 12);
-									}
-									else {
-										if (nw == tr->type) {
-											tr->sprt._set(tr->type, 3);
-										}
-										else {
-											tr->sprt._set(tr->type, 31);
-										}
-									}
-								}
-								else {
-									if (w == tr->type) {
-										if (nw == tr->type) {
-											if (ne == tr->type) {
-												tr->sprt._set(tr->type, 2);
-											}
-											else {
-												tr->sprt._set(tr->type, 21);
-											}
-										}
-										else {
-											if (ne == tr->type) {
-												tr->sprt._set(tr->type, 22);
-											}
-											else {
-												tr->sprt._set(tr->type, 23);
-											}
-										}
-									}
-									else {
-										if (ne == tr->type) {
-											tr->sprt._set(tr->type, 1);
-										}
-										else {
-											tr->sprt._set(tr->type, 11);
-										}
-									}
-								}
-							}
-						}
-					}
-					else {
-						if (s != tr->type) {
-							if (e != tr->type) {
-								if (w != tr->type) {
-									tr->sprt._set(tr->type, 0);
-								}
-								else {
-									tr->sprt._set(tr->type, 16);
-								}
-							}
-							else {
-								if (w != tr->type) {
-									tr->sprt._set(tr->type, 14);
-								}
-								else {
-									tr->sprt._set(tr->type, 102);
-								}
-							}
-						}
-						else {
-							if (e != tr->type) {
-								if (w != tr->type) {
-									tr->sprt._set(tr->type, 18);
-								}
-								else {
-									if (sw == tr->type) {
-										tr->sprt._set(tr->type, 9);
-									}
-									else {
-										tr->sprt._set(tr->type, 91);
-									}
-								}
-							}
-							else {
-								if (w == tr->type) {
-									if (sw == tr->type) {
-										if (se == tr->type) {
-											tr->sprt._set(tr->type, 8);
-										}
-										else {
-											tr->sprt._set(tr->type, 81);
-										}
-									}
-									else {
-										if (se == tr->type) {
-											tr->sprt._set(tr->type, 82);
-										}
-										else {
-											tr->sprt._set(tr->type, 83);
-										}
-									}
-								}
-								else {
-									if (se == tr->type) {
-										tr->sprt._set(tr->type, 7);
-									}
-									else {
-										tr->sprt._set(tr->type, 71);
-									}
-								}
-							}
-						}
-					}
 
-					//std::cout << "\n>" << tr->type << ": " << tr->position.x << ", " << tr->position.y;
-					//std::cout << " - " << tr->sprt.color.r << ", " << tr->sprt.color.g << ", " << tr->sprt.color.b;
 				}
+				break;
+			case 0:
+				this->sex.gender = { "Female", "F", 0 };
+				break;
+			case 1:
+				this->sex.gender = { "Male", "M", 1 };
+				break;
 			}
-			std::cout << "\n> Terrain set. " << this->timer._difference(this->timer);
-			//system("pause");
+			this->battling = -1;
+			this->casted = -1;
 		}
-
-		void _draw(HDC tool, DINT scale = 2, DINT outline = 1) {
-			/*
-			auto w = [] (HDC tool, INDEX <TERRAIN> terrains, DIMENSION measure) {
-				DINT x = 0, y = 0;
-				TERRAIN terrain = {};
-				PIXEL pixel = {};
-				for (DINT s = 0; s < terrains.length; s++) {
-					if (terrains.exist[s] == 1) {
-						terrain = terrains.item[s];
-						if (terrain.position.x == 0 && terrain.position.y == 0) {
-							terrain.sprite._draw(tool, terrain.position.w, terrain.position.h, measure.size, 0, 0, 7);
-						}
-						else {
-							if (terrain.position.x == 0) {
-								terrain.sprite._draw(tool, terrain.position.w, terrain.position.h, measure.size, 0, 0, 4);
-							}
-							else {
-								if (terrain.position.y == 0) {
-									terrain.sprite._draw(tool, terrain.position.w, terrain.position.h, measure.size, 0, 0, 8);
-								}
-								else {
-									terrain.sprite._draw(tool, terrain.position.w, terrain.position.h, measure.size);
-								}
-							}
-						}
-					}
-				}
-			};
-
-			std::thread t(w, tool, this->terrain, this->measure);
-			t.join(); DINT x = 0, y = 0;
-			*/
-			TERRAIN terrain = {};
-			PIXEL pixel = {};
-			/*
-			auto w = [](HDC tool, TERRAIN terrain, DIMENSION measure) {
-				if (terrain.position.x == 0 && terrain.position.y == 0) {
-					terrain.sprite._draw(tool, terrain.position.w, terrain.position.h, measure.size, 0, 0, 7);
-				}
-				else {
-					if (terrain.position.x == 0) {
-						terrain.sprite._draw(tool, terrain.position.w, terrain.position.h, measure.size, 0, 0, 4);
-					}
-					else {
-						if (terrain.position.y == 0) {
-							terrain.sprite._draw(tool, terrain.position.w, terrain.position.h, measure.size, 0, 0, 8);
-						}
-						else {
-							terrain.sprite._draw(tool, terrain.position.w, terrain.position.h, measure.size);
-						}
-					}
-				}
-			};
-			std::thread *threads = new std::thread[this->terrain.size];
-			for (DINT s = 0; s < this->terrain.size; s++) {
-
-				if (this->terrain.exist[s] == 1) {
-					terrain = this->terrain.item[s];
-					threads[s] = std::thread(w, tool, terrain, this->measure);
-					threads[s].join();
-				}
-			}
-			delete[] threads;
-			*/
-			for (DINT s = 0; s < this->terrain.length; s++) {
-				if (this->terrain.exist[s] == 1) {
-					terrain = this->terrain.item[s];
-					//std::cout << "\n> " << s << ": " << terrain.sprt.color.r << ", " << terrain.sprt.color.g << ", " << terrain.sprt.color.b;
-					terrain.sprt._draw(tool, terrain.position.w, terrain.position.h, this->measure.size);
-				}
-				
-			}
-		}
-
-		SINT _type(SINT x, SINT y) {
-			if (x < 0 || y < 0) return -1;
-			for (DINT t = 0; t < this->terrain.length; t++) {
-				if (this->terrain[t].position.x == x && this->terrain[t].position.y == y) return this->terrain[t].type;
-			}
-			return -1;
-		}
-
-		TERRAIN* _get(DINT x, DINT y) {
-			TERRAIN tr;
-			tr.type = -1;
-			TERRAIN* ter = &tr;
-			for (DINT t = 0; t < this->terrain.length; t++) {
-				if (this->terrain.exist[t]) {
-					ter = &this->terrain[t];
-					if (ter->position.x == x && ter->position.y == y) return ter;
-
-				}
-			}
-			return ter;
-		}
-
-	};
-	struct ATLAS {
-		ATLAS() {
-			this->bg = ENGINE_COLOR_MAP_BACKGROUND;
-			this->streak = 0;
-			this->loops = 0;
-			this->st = 0;
-			std::cout << "\nAtlas constructor called.";
+		CREATURE() {
+			this->current = 0;
+			this->from = 0;
+			this->battling = -1;
+			this->casted = -1;
 		};
-		~ATLAS() {
-			//this->maps.~INDEX();
-			//this->creatures.~INDEX();
-			//this->resources.~INDEX();
-		};
-		CHART <MAP> maps;
-		CHART <CREATURE> creatures;
-		CHART <RESOURCE> resources;
-		COLOR bg;
-		DIMENSION measure;
-		DICE dice; 
-		ITEM loot;
-		DINT streak;
-		STRING streaker;
-		LINT st;
-		DINT loops;
+		TAG tag;
+		FIGURE strength, agility, guard, charisma, sense, energy, health;
+		SEX sex;
+		ANIMATION graphic;
+		MOVEMENT movement;
+		BEHAVIOUR behaviour;
+		INVENTORY inventory;
+		MOVE move;
+		POS position;
+		DINT current, from;
+		SINT battling, casted;
+		CHART <TILE> astar;
+		DICE dice;
 
-		void _a() {
+		SINT _clampX(SINT value) {
+			SINT w = (GAME::MAP::position.x - 1) / 2;
+			if (value <= -w) return -w;
+			if (value >= w) return w;
+			return value;
+		}
+		SINT _clampY(SINT value) {
+			SINT h = (GAME::MAP::position.y - 1) / 2;
+			if (value <= -h) return -h;
+			if (value >= h) return h;
+			return value;
+		}
 
-			auto w = [](ATLAS a) {
-				a._movement();
-				a._update();
-				return a;
-			};
-			std::future<ATLAS> at = std::async(w, *this);
-			std::thread a(w, *this);
-			a.join();
-			*this = at.get();
-
+		void _die() {
+			this->astar._close();
+			this->movement.type._close();
 
 		}
 
-		void _pre(){
-			TERRAIN* ter;
-			for (DINT m = 0; m < this->maps.length; m++) {
-				if (this->maps.exist[m]) {
-					for (DINT t = 0; t < this->maps[m].terrain.length; t++) {
-						if (this->maps[m].terrain.exist[t]) {
-							ter = &this->maps[m].terrain[t];
-							ter->sprt.occupied = 0;
-							//ter->sprt.a = ter->sprt.oa;
-							//ter->sprt.b = ter->sprt.ob;
 
-						}
+	};	
+	struct MAP {
+		MAP() {
+			measure.x = 0;
+			measure.y = 0;
+			measure.w = 0;
+			measure.h = 0;
+			this->enabled = 0;
+			this->discovered = 0;
+		};
+		
+		CHART <CREATURE> creature;
+		CHART <TILE> tile;
+		static CHART <ABILITY> action;
+		DINT enabled, discovered;
+		DICE dice;
+		RANDOM random;
+		static DINT scale, debug, targeting;
+		static DIMENSION measure;
+		static POS position, tiling;
+		static double speed;
+		static POS init, current, max;
+
+
+		void _gen(SINT w, SINT h, DINT scale = 1) {
+
+			// TO DO: tiles < creatures
+			TILE t;
+			for (SINT x = -w; x <= w; x++) {
+				for (SINT y = -h; y <= h; y++) {
+					//std::cout << "\n " << x << ", " << y;
+					if(x == 0 && y == 0) {
+						t.graphic = GAME::library.sprite[GAME::library._search("tile-base-center")];
+						GAME::MAP::tiling.x = t.graphic.size.w;
+						GAME::MAP::tiling.y = t.graphic.size.h;
+						t.origin = { GAME::MAP::position.x + (x - y - 1) * (GAME::MAP::tiling.x / 2), GAME::MAP::position.y + (x + y - 1) * (GAME::MAP::tiling.y / 2) };
+						t.position = { t.origin.x * GAME::MAP::scale, t.origin.y * GAME::MAP::scale };
+						t.center = { t.position.x + GAME::MAP::tiling.x / 2 * GAME::MAP::scale, t.position.y + GAME::MAP::tiling.y / 2 * GAME::MAP::scale };
+						t.id = { x, y };
+						this->tile << t;
+					}
+					else {
+						this->_generateTile(x, y);
 					}
 				}
 			}
-
-			for (DINT c = 0; c < this->creatures.size; c++) {
-				if (this->creatures.exist[c]) {
-					this->creatures[c].speed.current = this->creatures[c].speed.total;
-				}
-			}
+			GAME::MAP::init = { -w, -h, w, h };
+			GAME::MAP::current = { -w, -h, w, h };
 		}
 
-		void _update() {
 
-			if (this->creatures.length > 0) {
-				for (DINT d = 0; d < this->creatures.length; d++) {
-					if (this->creatures.exist[d] == 1) {
-						CREATURE* a = &this->creatures.item[d];
-						SINT type = this->_tile(a);
-						switch (type) {
-						default:
-							break;
-						case ENGINE_TYPE_TILE_SWAMP:
-							//a->speed.current = 
+		void _paint() {
+			SINT cx = 0, cy = 0, hx = 0, hy = 0, hw = 0, hh = 0;
+
+			for (DINT t = 0; t < this->tile.length; t++) {
+				TILE *tile = &this->tile[t];
+				tile->position = { GAME::camera.offset.x * GAME::MAP::scale + state.w / 2 + (tile->id.x - tile->id.y - 1) * (GAME::MAP::tiling.x / 2) * GAME::MAP::scale, GAME::camera.offset.y * GAME::MAP::scale + state.h / 2 + (tile->id.x + tile->id.y - 1) * (GAME::MAP::tiling.y / 2) * GAME::MAP::scale };
+				tile->center = { tile->position.x + GAME::MAP::tiling.x / 2 * GAME::MAP::scale, tile->position.y + GAME::MAP::tiling.y / 2 * GAME::MAP::scale };
+
+				if (tile->center.x > 0 && tile->center.x < state.w) {
+					if (tile->center.y > 0 && tile->center.y < state.h) {
+						if (GAME::camera.center.x + state.w / 2 > tile->position.x && 
+							GAME::camera.center.x + state.w / 2 < tile->position.x + GAME::MAP::tiling.x * GAME::MAP::scale &&
+							GAME::camera.center.y + state.h / 2 > tile->position.y &&
+							GAME::camera.center.y + state.h / 2 < tile->position.y + GAME::MAP::tiling.y * GAME::MAP::scale
+							) {
+
+							SPRITE g = GAME::library.sprite[GAME::library._search("tile-base-camera")];
+							g._draw(GAME::MAP::scale, tile->position.x, tile->position.y);
+							//GAME::camera.tile = {tile->center.x, tile->center.y};
+						}
+						else {
+
+
+							SINT ty = 0;
+							if (tile->graphic.size.h != GAME::MAP::tiling.y) {
+								ty = tile->position.y - (tile->graphic.size.h - GAME::MAP::tiling.y) * GAME::MAP::scale;
+							}
+							else {
+								ty = tile->position.y;
+							}
+							tile->graphic._draw(GAME::MAP::scale, tile->position.x, ty);
+							if (tile->raining > 0) {
+								SPRITE rain = GAME::library.sprite[GAME::library._search("tile-base-rain")];
+								rain._draw(GAME::MAP::scale, tile->position.x, ty);
+							}
+							if (GAME::MAP::debug && tile->occupee != -1) {
+								state._set(tile->center.x, tile->center.y, R, 2, 2);
+							}
+						}
+					}
+					if (GAME::MAP::debug == 2) {
+						STRING steps;
+						steps = WRITER::_itc(tile->steps);
+						WRITER::_draw({ steps.text, tile->center.x - 5, tile->center.y - 5 }, R);
+					}
+					/*
+					TEXTUAL text;
+					STRING pos;
+					pos._append(WRITER::_itc(tile->id.x));
+					pos._space(".");
+					pos._append(WRITER::_itc(tile->id.y));
+					text = { pos.text, tile->center.x - 15, tile->center.y - 5, B, 2, 1 };
+					WRITER::_draw(text, R);
+					*/
+				}
+			}
+
+
+			for (DINT b = 0; b < this->creature.length; b++) {
+				CREATURE *c = &this->creature[b];
+				if (GAME::MAP::debug) {
+					for (DINT a = 0; a < c->astar.length - 1; a++) {
+						TILE ta = this->tile[this->_getTile(c->astar[a].id.x, c->astar[a].id.y)];
+						if (ta.center.x > 0 && ta.center.x < state.w) {
+							if (ta.center.y > 0 && ta.center.y < state.h) {
+								TILE tb = this->tile[this->_getTile(c->astar[a + 1].id.x, c->astar[a + 1].id.y)];
+								SPOT aa = { (double)ta.center.x, (double)ta.center.y };
+								SPOT ab = { (double)tb.center.x, (double)tb.center.y };
+								LINE line = { aa, ab, 1 , Y };
+								line._draw();
+							}
+						}
+					}
+				}
+				SINT r = this->_getTile(c->movement.current.x, c->movement.current.y);
+				if(r != -1){
+					TILE tile = this->tile[r];
+					if (tile.center.x > 0 && tile.center.x < state.w) {
+						if (tile.center.y > 0 && tile.center.y < state.h) {
+							c->movement.travelling.x = (tile.center.x + c->movement.travelled.x * GAME::MAP::scale * GAME::MAP::speed);
+							c->movement.travelling.y = (tile.center.y + c->movement.travelled.y * GAME::MAP::scale * GAME::MAP::speed);
+							SINT curx = (SINT)(c->movement.travelling.x - c->graphic.size.w / 2 * GAME::MAP::scale / 2), cury = (SINT)(c->movement.travelling.y - c->graphic.size.h / 2 * GAME::MAP::scale / 2);
+							//std::cout << "\n> Dir: " << c->movement.direction;
+							switch (c->movement.direction) {
+							default:
+								c->graphic._draw(GAME::MAP::scale / 2, -1, curx, cury);
+								break;
+							case 2:
+							case 4: {
+								//std::cout << "\n> " << curx << ", " << cury;
+								//std::cout << " - " << c->movement.travelling.x << ", " << c->movement.travelling.y;
+								c->graphic._draw(GAME::MAP::scale / 2, -1, curx, cury, 1);
+								//c->movement.start = { (double)curx, (double)cury };
+							} break;
+							case 6:
+							case 8: {
+								c->graphic._draw(GAME::MAP::scale / 2, -1, curx, cury);
+								//c->movement.start = { (double)curx, (double)cury };
+							} break;
+							}
+							//state._set((SINT)c->movement.travelling.x, (SINT)c->movement.travelling.y, PNK, 3, 3);
+
+							COLOR color = G;
+							hw = c->graphic.size.w * GAME::MAP::scale / 2 + 2;
+							hh = GAME::MAP::scale / 2 + 2;
+							hx = c->graphic.size.w / 2 * GAME::MAP::scale / 2; // c->graphic.size.w* GAME::MAP::scale / 2;
+							hy = c->graphic.size.h / 2 * GAME::MAP::scale / 2 + GAME::MAP::scale; // (c->graphic.size.h / 2)* GAME::MAP::scale; // -GAME::MAP::scale / 2;
+							for (DINT x = 0; x < hw; x++) {
+								for (DINT y = 0; y < hh; y++) {
+									if (x == 0 || y == 0 || x == hw - 1 || y == hh - 1) {
+										if (GAME::selected == b) {
+											color = PNK;
+										}
+										else {
+											color = B;
+										}
+									}
+									else {
+										if (c->health.point.current == c->health.point.total) {
+											color = G;
+										}
+										else {
+
+											if (((double)x + 0.1) * c->health.point.total / hw <= (double)c->health.point.current) {
+												color = G;
+											}
+											else {
+												color = R;
+											}
+										}
+									}
+									state._set((SINT)c->movement.travelling.x - hx + x, (SINT)c->movement.travelling.y - hy + y, color);
+								}
+							}
+						}
+					}
+				}
+
+			}
+
+
+		}
+
+		
+		void _app(const char sprite[], const char name[], SINT gender = -1, DINT movement = ENGINE_TYPE_TILE_MEADOW) {
+			CREATURE b = {name, gender};
+			SINT r = -1, t = -1, id = -1, x = 0, y = 0;
+			//std::cout << "\n>>" << this->tile.length;
+			do {
+				x = this->dice._roll(GAME::MAP::current.x, GAME::MAP::current.w); // WIDTH
+				y = this->dice._roll(GAME::MAP::current.y, GAME::MAP::current.h); // HEIGHT
+				r = this->_getTile(x, y);
+				t = -1;
+				//std::cout << "\n> " << x << ", " << y << "(" << r << ", " << this->tile[r].type<< ")";
+				for (DINT c = 0; c < this->creature.size; c++) {
+					CREATURE cr = this->creature[c];
+					if (cr.movement.to.x == x && cr.movement.to.y == y) {
+						t = 1;
+						break;
+					}
+				}
+			} while (t == 1 || r == -1 || this->tile[r].type != movement);
+			do {
+				id = this->dice._roll(0, 999);
+				for (DINT c = 0; c < this->creature.size; c++) {
+					if (this->creature._exist(c) == 1) {
+						if (this->creature[c].tag.id == id) {
+							id = -1;
 							break;
 						}
-						//std::cout << "\nSpeed: " << a->speed.current;
-						a->_update();
-						if ((double)a->health.current <= (double)a->health.total / 2.0) {
-							if (a->inventory._available(ENGINE_TYPE_RESOURCE_BERRY) > 0) {
-								a->_use(ENGINE_TYPE_RESOURCE_BERRY);
-							}
-						}
 					}
 				}
+
+			} while (id == -1);
+			b.tag.id = id;
+			b.graphic = GAME::library.animation[GAME::library._asearch(sprite)];
+			b.position = { x, y };
+			b.movement.current = { this->tile[r].id.x, this->tile[r].id.y };
+			b.movement.to = { this->tile[r].id.x, this->tile[r].id.y };
+			b.movement.type << movement;
+			if (movement == ENGINE_TYPE_TILE_MEADOW) {
+				b.movement.type << ENGINE_TYPE_TILE_DESOLATE;
+				b.movement.type << ENGINE_TYPE_TILE_ROAD;
 			}
-			if (this->resources.length > 0) {
-				for (DINT r = 0; r < this->resources.length; r++) {
-					if (this->resources.exist[r] == 1) {
-						//this->resources.item[r]._update();
-					}
-				}
-			}
+			this->creature << b;
+			//this->creature[this->creature.last].tag.id = this->creature.last;
+			this->tile[r].occupee = this->creature.last;
 		}
 
-		COLLISION _collive(CREATURE a = {}) {
-			COLLISION collision = {};
-			if (this->creatures.length > 1) {
-				CREATURE *b;				
-				for (DINT c = 0; c < this->creatures.size; c++) {
-					if (this->creatures.exist[c] == 1) {
-						b = &this->creatures.item[c];
-						//if (distance < x){
-						if (b->unique != a.unique) {
-							collision = a._collision(b->model.position);
-							if (collision.collided == 1) {
-								collision.type = ENGINE_TYPE_CREATURE;
-								collision.collie = b->unique;
-								break;
-							}
-						}
-					}
-				}
-				
-			}
-			if (collision.collided == 0) {
-				if (this->resources.length > 0) {					
-					RESOURCE *c;
-					for (DINT r = 0; r < this->resources.size; r++) {
-						if (this->resources.exist[r] == 1) {
-							c = &this->resources.item[r];
-							collision = a._collision(c->model.position);
-							if (collision.collided == 1) {
-								collision.type = ENGINE_TYPE_RESOURCE;
-								collision.collie = c->unique;
-								this->loot = c->item;
-								c->_decay();
-								this->resources >> r;
-								break;
-							}
-						}
-					}
-					
-				}
-			}
-			return collision;
-		}
+		SINT _getTile(SINT x, SINT y) {
 
-		SINT _locate(DINT unique) {
-			if (this->creatures.length > 0) {
-				for (DINT c = 0; c < this->creatures.size; c++) {
-					if (this->creatures.exist[c] == 1) {
-						if (this->creatures.item[c].unique == unique) return c;
-					}
+			for (DINT t = 0; t < this->tile.size; t++) {
+				if (this->tile._exist(t) == 1) {
+					if (this->tile[t].id.x == x && this->tile[t].id.y == y) return t;
 				}
 			}
 			return -1;
 		}
 
-		void _event() {
-			if(this->creatures.length > 1){
-				if (this->creatures.item[0].target.type == 0) {
-					//this->creatures.item[0].target._set(this->creatures.item[1].unique, ENGINE_TYPE_CREATURE);
-				}
+		void _generateTile(SINT x, SINT y) {
+			TILE t;
+			switch (this->dice._roll(0, 3)) {
+			default:
+				t._set(ENGINE_TYPE_TILE_MEADOW);
+				break;
+				/*
+			case 1:
+				t.graphic = GAME::library.sprite[GAME::library._search("tile-base-grass")];
+				t.blocked = 0;
+				t.type = ENGINE_TYPE_TILE_MEADOW;
+				break;
+				*/
+			case 2:
+				t._set(ENGINE_TYPE_TILE_WATER);
+				break;
+			case 6:
+				t._set(ENGINE_TYPE_TILE_WALL);
+				break;
+			case 9:
+				t._set(ENGINE_TYPE_TILE_TREE);
+				break;
 			}
+			//t.raining = this->dice._roll(0, 1500);
+			t.base = t.type;
+			t.id = { x, y };
+			t.steps = 0;
+			t.unstepped = 0;
+			this->tile << t;
+
 		}
 
-		void _movement() {
-			DINT n = 0;
-			COLLISION collision = {};
-			CREATURE* a = {}, * b = {};
-			if (this->creatures.length > 0) {
-				do {
-					if (this->creatures.exist[n] == 1) {
-						if (this->creatures.item[n].speed.current > 0) {
-							//SwitchToThread();
-							a = &this->creatures.item[n];
-							a->dice._roll(0, 8);
-							a->model.collision = 0;
-							a->model.type = 0;
-							if(a->collision.collie >= 0) a->collision.last = a->collision.collie;
-							a->collision._reset();
-							//this->creatures.item[n].model.to._set(d.model.position);
-							a->model.to._set(a->model.position);
-							switch (a->dice.value.i) {
+		SINT _getCreature(DINT id) {
+			for (DINT c = 0; c < this->creature.size; c++) {
+				if (this->creature._exist(c) == 1) {
+					if (this->creature[c].tag.id == id) return c;
+				}
+			}
+			return -1;
+		}
+
+		void _towards(CREATURE* creature, POS to) {
+
+			POS s = this->tile[this->_getTile(creature->movement.current.x, creature->movement.current.y)].id;
+			CHART<NODE> positions;
+			for (DINT tl = 0; tl < this->tile.length; tl++) {
+				if (this->tile._exist(tl) == 1) {
+					POS pst = this->tile[tl].id;
+					NODE n = {};
+					n.x = pst.x;
+					n.y = pst.y;
+					n.blocked = creature->movement._able(this->tile[tl].type);
+					n.parent = nullptr;
+					n.checked = 0;
+					n.g = INFINITY; // this->random._roll(0, 300);
+					n.l = INFINITY;
+					n.f = INFINITY;
+					n.h = INFINITY;
+					n.index = tl;
+					n.draw = { this->tile[tl].center.x, this->tile[tl].center.y };
+					positions << n;
+				}
+			}
+
+			for (DINT n = 0; n < positions.length; n++) {
+				NODE* cur = &positions[n];
+				cur->neighbour << _getNode(positions, cur->x - 1, cur->y, 4);
+				cur->neighbour << _getNode(positions, cur->x, cur->y - 1, 8);
+				cur->neighbour << _getNode(positions, cur->x, cur->y + 1, 2);
+				cur->neighbour << _getNode(positions, cur->x + 1, cur->y, 6);
+			}
+			CHART <POS> result = _path(&positions, s, to);
+			if (result.length > 0) {
+				creature->astar._close();
+				//result >> result._first();
+				for (DINT ps = 0; ps < result.length; ps++) {
+					if (result._exist(ps) == 1) {
+						SINT res = this->_getTile(result[ps].x, result[ps].y);
+						//std::cout << "\n>> " << res;
+						if (res >= 0) {
+							creature->astar << this->tile[res];
+						}
+					}
+				}
+			}
+				for (DINT p = 0; p < positions.length; p++) {
+					positions[p].neighbour._close();
+				}
+			positions._close();
+			result._close();
+		}
+
+
+		SINT _randomCreature(SINT self = -1) {
+			SINT c = -1;
+			//do {
+				c = this->dice._roll(0, this->creature.length - 1);
+			//} while (c == -1);
+			return c;
+		}
+
+
+		void _move() {
+			SINT x = 0, y = 0, r = -1;
+			for (DINT b = 0; b < this->creature.size; b++) {
+				if (this->creature._exist(b) == 1) {
+					CREATURE* creature = &this->creature[b];
+					//SINT f = this->_getTile(creature->movement.current.x, creature->movement.current.y), t = this->_getTile(creature->movement.to.x, creature->movement.to.y);
+					TILE* from = &this->tile[this->_getTile(creature->movement.current.x, creature->movement.current.y)], * to = &this->tile[this->_getTile(creature->movement.to.x, creature->movement.to.y)];
+					
+					//from->occupee = b;
+					//to->occupee = b;
+					if (creature->battling == -1) {
+						if (from->id.x == to->id.x && from->id.y == to->id.y) creature->movement.arrived = 1;
+						if (creature->movement.arrived == 1) {
+							if (creature->behaviour.contest > 25) {
+								creature->behaviour.contest = 0;
+							}
+							from->occupee = -1;
+							to->occupee = creature->tag.id;
+							x = to->id.x;
+							y = to->id.y;
+							SINT px = from->id.x, py = from->id.y, tx = to->id.x, ty = to->id.y;
+							DINT move = 0;
+							TILE* next = nullptr;
+							switch (this->dice._roll(0, 12)) {
 							default:
 								break;
 							case 2:
-								a->model.facing = 2;
-								if (a->model.position.y < (this->measure.h + this->measure.y - (a->model.position.size * a->model.position.h)) - a->speed.current) {
-									a->model.to.y = a->model.position.y + a->speed.current;
+								creature->movement.direction = 2;
+								move = 1;
+								y += 1;
+								break;
+							case 4:
+								creature->movement.direction = 4;
+								move = 1;
+								x -= 1;
+								break;
+							case 6:
+								creature->movement.direction = 6;
+								move = 1;
+								x += 1;
+								break;
+							case 8:
+								creature->movement.direction = 8;
+								move = 1;
+								y -= 1;
+								break;
+							}
+							r = this->_getTile(x, y);
+							if (r == -1) {
+								if (x <= GAME::MAP::max.w && y <= GAME::MAP::max.h) {
+									if (x >= GAME::MAP::max.x && y >= GAME::MAP::max.y) {
+										this->_generateTile(x, y);
+										r = this->tile.last; // this->_getTile(x, y);
+										from = &this->tile[this->_getTile(creature->movement.current.x, creature->movement.current.y)];
+										to = &this->tile[this->_getTile(creature->movement.to.x, creature->movement.to.y)];
+										move = 1;
+										creature->behaviour.discover = 0;
+										//current = &this->tile[this->_getTile(creature->movement.to.x, creature->movement.to.y)];
+										//std::cout << "\n> New tile (" << x << ", " << y << "): ";
+										//std::cout << r;
+									}
+								}
+							}
+							if (move) {
+								next = &this->tile[r];
+								if (next->occupee == -1 || next->occupee == creature->tag.id) {
+									if (creature->movement._able(next->type)) {
+										if (to != next) {
+											next->occupee = creature->tag.id;
+											to->steps++;
+											to->unstepped = 0;
+											creature->movement.current = { to->id.x, to->id.y };
+											creature->movement.to = { next->id.x, next->id.y };
+											creature->movement.arrived = 0;
+											creature->movement.travelled = { 0.0, 0.0 };
+											creature->behaviour.contest++;
+										}
+									}
 								}
 								else {
-									a->model.to.y = this->measure.h + this->measure.y - (a->model.position.size * a->model.position.h);
+									CREATURE* target = &this->creature[this->_getCreature(next->occupee)];
+									if (target->battling == -1) {
+										creature->battling = next->occupee;
+										target->battling = creature->tag.id;
+									}
+								}
+							}
+						}
+						else {
+							double speed = 0.0;
+							switch (from->type) {
+							default:
+								speed = 1.0;
+								break;
+							case ENGINE_TYPE_TILE_ROAD:
+								speed = 1.8;
+								break;
+							case ENGINE_TYPE_TILE_GROWTH:
+								speed = 0.65;
+								break;
+							}
+							creature->movement._advance(speed);
+							SINT fx = from->center.x, fy = from->center.y, tx = to->center.x, ty = to->center.y;
+
+							switch (creature->movement.direction) {
+							default:
+								break;
+							case 2:
+								if (fx + creature->movement.travelled.x * GAME::MAP::scale * GAME::MAP::speed <= tx) {
+									if (fy + creature->movement.travelled.y * GAME::MAP::scale * GAME::MAP::speed >= ty) {
+										creature->movement.arrived = 1;
+									}
 								}
 								break;
 							case 4:
-								a->model.facing = 4;
-								if (a->model.position.x >= a->speed.current + this->measure.x) {
-									a->model.to.x = a->model.position.x - a->speed.current;
-								}
-								else {
-									a->model.to.x = this->measure.x;
+								if (fx + creature->movement.travelled.x * GAME::MAP::scale * GAME::MAP::speed <= tx) {
+									if (fy + creature->movement.travelled.y * GAME::MAP::scale * GAME::MAP::speed <= ty) {
+										creature->movement.arrived = 1;
+									}
 								}
 								break;
 							case 6:
-								a->model.facing = 6;
-								if (a->model.position.x < (this->measure.w + this->measure.x - (a->model.position.size * a->model.position.w)) - a->speed.current) {
-									a->model.to.x = a->model.position.x + a->speed.current;
-								}
-								else {
-									a->model.to.x = this->measure.w + this->measure.x - (a->model.position.size * a->model.position.w);
+								if (fx + creature->movement.travelled.x * GAME::MAP::scale * GAME::MAP::speed >= tx) {
+									if (fy + creature->movement.travelled.y * GAME::MAP::scale * GAME::MAP::speed >= ty) {
+										creature->movement.arrived = 1;
+									}
 								}
 								break;
 							case 8:
-								a->model.facing = 8;
-								if (a->model.position.y >= a->speed.current + this->measure.y) {
-									a->model.to.y = a->model.position.y - a->speed.current;
-								}
-								else {
-									a->model.to.y = this->measure.y;
+								if (fx + creature->movement.travelled.x * GAME::MAP::scale * GAME::MAP::speed >= tx) {
+									if (fy + creature->movement.travelled.y * GAME::MAP::scale * GAME::MAP::speed <= ty) {
+										creature->movement.arrived = 1;
+									}
 								}
 								break;
 							}
-							collision = this->_collive(*a);
-							if (collision.collided == 0) {
-								a->model.position._set(a->model.to);
-								a->position._set(a->model.to);
+						}
+					}
+					else {
+						SINT battling = this->_getCreature(creature->battling);
+						if (creature->health.point.current > 0 && battling >= 0 && this->creature._exist(battling) == 1) {
+							creature->move.ready += 0.025 * creature->energy.point.total;
+							if (creature->move.ready >= 2.0) {
+								if (this->creature._exist(battling) == 1) {
+									CREATURE* target = &this->creature[battling];
+									SINT damage = creature->strength.point.total - target->guard.point.current;
+									//std::cout << "\n>" << b << " - " << creature->strength.point.total << " - " << target->guard.point.current << " = " << damage;
+									target->health.point.current -= (damage <= 0) ? (1) : (damage);
+									if (target->health.point.current <= 0) {
+										TILE* tf = &this->tile[this->_getTile(target->movement.current.x, target->movement.current.y)], * tt = &this->tile[this->_getTile(target->movement.to.x, target->movement.to.y)];
+										tf->occupee = -1;
+										tt->occupee = -1;
+										TILE* cf = &this->tile[this->_getTile(creature->movement.current.x, creature->movement.current.y)], * ct = &this->tile[this->_getTile(creature->movement.to.x, creature->movement.to.y)];
+										cf->occupee = creature->tag.id;
+										ct->occupee = creature->tag.id;
+										creature->battling = -1;
+										creature->behaviour.target = -1;
+										if (GAME::selected == battling) GAME::selected = -1;
+										this->creature[battling]._die();
+										this->creature >> battling;
+									}
+
+									creature->move.ready -= 2.0;
+								}
+								else {
+									creature->battling = -1;
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+
+		DINT _countTile(DINT type, DINT exist = 1) {
+			DINT count = 0;
+			for (DINT t = 0; t < this->tile.length; t++) {
+				if (this->tile[t].type == type) {
+					if (exist == 1) {
+						return 1;
+					}
+					else {
+						count++;
+					}
+				}
+			}
+			
+			return count;
+		}
+
+		void _clean() {
+			if (GAME::climate) {
+				for (DINT t = 0; t < this->tile.length; t++) {
+					TILE* tile = &this->tile[t];
+					if (tile != nullptr) {
+						SINT n = this->_getTile(tile->id.x, tile->id.y - 1), s = this->_getTile(tile->id.x, tile->id.y + 1), w = this->_getTile(tile->id.x - 1, tile->id.y), e = this->_getTile(tile->id.x + 1, tile->id.y);
+						if (tile->raining > 0) {
+							tile->raining--;
+							double amount = 0.0012;
+							if (n >= 0 && this->tile[n].type == ENGINE_TYPE_TILE_WATER) tile->moisture += amount;
+							if (s >= 0 && this->tile[s].type == ENGINE_TYPE_TILE_WATER) tile->moisture += amount;
+							if (w >= 0 && this->tile[w].type == ENGINE_TYPE_TILE_WATER) tile->moisture += amount;
+							if (e >= 0 && this->tile[e].type == ENGINE_TYPE_TILE_WATER) tile->moisture += amount;
+							tile->moisture += amount;
+						}
+						else {
+							double amount = 0.0003;
+							if (n >= 0 && this->tile[n].type == ENGINE_TYPE_TILE_DESOLATE) tile->moisture -= amount;
+							if (s >= 0 && this->tile[s].type == ENGINE_TYPE_TILE_DESOLATE) tile->moisture -= amount;
+							if (w >= 0 && this->tile[w].type == ENGINE_TYPE_TILE_DESOLATE) tile->moisture -= amount;
+							if (e >= 0 && this->tile[e].type == ENGINE_TYPE_TILE_DESOLATE) tile->moisture -= amount;
+							tile->moisture -= amount;
+						}
+
+						if (tile->moisture < -0.95 && tile->type != ENGINE_TYPE_TILE_DESOLATE) {
+							tile->_set(ENGINE_TYPE_TILE_DESOLATE);
+						}
+						else {
+							if (tile->moisture >= 0.1 && tile->type == ENGINE_TYPE_TILE_DESOLATE && tile->type != ENGINE_TYPE_TILE_MEADOW) {
+								tile->_set(ENGINE_TYPE_TILE_MEADOW);
 							}
 							else {
-								//a->model.to._set(a->model.position);
-								a->model.collision = 1;
-								a->model.type = collision.type;
-								a->collision = collision;
-								switch (collision.type) {
-								default:
-									break;
-								case ENGINE_TYPE_RESOURCE:
-									if (this->loot.amount > 0) {
-										a->inventory._gather(this->loot);
-										this->loot = {};
-									}
-									break;
-								case ENGINE_TYPE_CREATURE:
-									a->temp = this->_locate(collision.collie);
-									if (a->temp != -1) {
-										b = &this->creatures.item[a->temp];
-										a->dice._roll(0, 2);
-										b->_damage(a->dice.value.i);
-										//b->health.current -= a->dice.value.i;
-										if (b->health.current <= 0) {
-											if (b->experience.point.total > (SINT)this->streak) {
-												this->streak = (DINT)b->experience.point.total;
-												this->streaker._write(b->name.text);
-												TIME time;
-												this->st = (LINT)time._difference(b->appearance);
-												this->loops = b->loop.current;
-												std::cout << "\n>Streak (" << this->streak <<") time: " << this->st << " (" << this->loops << ") by " << this->streaker.text;
-											}
-											b->_vanish();
-											this->creatures >> a->temp;
-											a->experience._gain(1);
-										}
-									}
-									break;
+								if (tile->moisture >= 2.75 && tile->type != ENGINE_TYPE_TILE_WATER) {
+									tile->_set(ENGINE_TYPE_TILE_WATER);
 								}
 							}
-							
-
 						}
-					}
-					n++;
-				} while (n < this->creatures.size);
-			}
-		}
 
-		void _appear(BASIS b = {}, SINT x = -1, SINT y = -1, SINT speed = -1) {
-			x = (x > -1) ? (this->measure.x + x) : (b.dice._roll(this->measure.x, this->measure.x + this->measure.w - (b.model.position.size * b.model.position.w)));
-			y = (y > -1) ? (this->measure.y + y) : (b.dice._roll(this->measure.y, this->measure.y + this->measure.h - (b.model.position.size * b.model.position.h)));
-			//x = (x > -1) ? (this->measure.x + (x * 8)) : (b.dice._roll(0, 16));
-			//x = (y > -1) ? (this->measure.y + (y * 8)) : (b.dice._roll(0, 16));
-			b.model._set(x, y, b.model.position.size, b.model.position.w, b.model.position.h);
-			INDEX <DINT> *uniques = new INDEX<DINT>;
-			DINT found = 0;
-			for (DINT c = 0; c < this->creatures.size; c++) {
-				uniques->_add(this->creatures.item[c].unique);
-			}
-			for (DINT r = 0; r < this->resources.size; r++) {
-				uniques->_add(this->resources.item[r].unique);
-			}
-			do {
-				found = 0;
-				b.dice._roll(1, uniques->size + 1);
-				for (DINT u = 0; u < uniques->size; u++) {
-					if (uniques->item[u] == b.dice.value.i) {
-						found = 1;
-					}
-				}
-			} while (found == 1);
-			b.unique = b.dice.value.i;
-			if (speed == 0) b.speed = 0;
-			switch (b.type) {
-				default: {
-					break;
-				}
-				case ENGINE_TYPE_CREATURE: {
-					CREATURE *c = new CREATURE;
-					//b.speed = 16;
-					b.name._generate(b.dice._roll(2, 8));
-					c->_base(b);
-					//c->health.total = b.origin.health;
-					for (DINT d = 0; d < 3; d++) {
-						c->dice._roll(0, 16);
-						switch (c->dice.value.i) {
-						default:
-							c->_develop(ENGINE_CARCASS_CELL);
-							break;
-						case 1:
-							c->_develop(ENGINE_BIONIC_ARM);
-							break;
-						case 2:
-							c->_develop(ENGINE_BIONIC_FINGER);
-							break;
-						case 3:
-							c->_develop(ENGINE_BIONIC_HAND);
-							break;
-						case 4:
-							c->_develop(ENGINE_BOTANY_BRANCH);
-							break;
-						case 5:
-							c->_develop(ENGINE_BIONIC_LEG);
-							break;
-						case 6:
-							c->_develop(ENGINE_CARCASS_TISSUE);
-							break;
-						case 7:
-							c->_develop(ENGINE_BOTANY_BLOOM);
-							break;
-						case 8:
-							c->_develop(ENGINE_BIONIC_FOOT);
-							break;
-						case 9:
-							c->_develop(ENGINE_BIONIC_TOE);
-							break;
+						tile->unstepped++;
+						if (tile->unstepped == ENGINE_DEVELOP_ROAD_DECAY) {
+							tile->steps--;
+							tile->unstepped = 0;
 						}
-					}
-					c->health.current = c->health.total;
-					c->_gain(ENGINE_DUS_TEST);
-					c->appearance._clock();
-					this->creatures << *c;
-					delete c;
-					break;
-				}
-				case ENGINE_TYPE_RESOURCE:
-				case ENGINE_TYPE_RESOURCE_PLANT:
-				case ENGINE_TYPE_RESOURCE_BERRY:
-				case ENGINE_TYPE_RESOURCE_STONE:
-				case ENGINE_TYPE_RESOURCE_CURRENCY:
-				{
-					RESOURCE *r = new RESOURCE;
-					r->_base(b);
-					r->item.name._write(r->name.text);
-					r->dice._roll(1, 2);
-					r->item.amount = r->dice.value.i;
-					r->item.identifier = r->identifier;
-					r->item.type = r->type;
-					this->resources << *r;
-					delete r;
-					break;
-				}
-			}
-			uniques->_close();
-		}
-
-		DINT _tile(CREATURE *creature) {
-			TERRAIN *ter;
-			DINT x, y, w, h;
-			SINT type = -1;
-			for (DINT m = 0; m < this->maps.length; m++) {
-				if (this->maps.exist[m]) {
-					for (DINT t = 0; t < this->maps[m].terrain.length; t++) {
-						if (this->maps[m].terrain.exist[t]) {
-							ter = &this->maps[m].terrain[t];
-							//ter->sprt.occupied = 0;
-							x = creature->model.position.x + creature->model.position.w / 2;
-							y = creature->model.position.y + creature->model.position.h / 2;
-							w = ter->sprt.size.w * this->measure.size + ter->position.w;
-							h = ter->sprt.size.h * this->measure.size + ter->position.h;
-							if (x >= ter->position.w && x <= w) {
-								if (y >= ter->position.h && y <= h) {
-									ter->sprt.occupied = 1;
-									switch (ter->type) {
-									default:
-										break;
-									case ENGINE_TYPE_TILE_SWAMP:
-										if(creature->speed.current == creature->speed.total) creature->speed.current = (DINT)(creature->speed.total / 2);
-										break;
-									case ENGINE_TYPE_TILE_MEADOW:
-										creature->_heal(1);
-										break;
-									}
-									type = ter->type;
-								}
+						if (tile->type != ENGINE_TYPE_TILE_WATER && tile->type != ENGINE_TYPE_TILE_WALL) {
+							if (tile->type != ENGINE_TYPE_TILE_ROAD && tile->steps >= ENGINE_DEVELOP_ROAD) {
+								tile->_set(ENGINE_TYPE_TILE_ROAD);
 							}
 						}
 					}
 				}
 			}
-			return type;
 		}
-	};
 
-	GAME() {
-		this->played = 0;
-		this->sleep = 0;
-		this->configured = 0;
-		std::cout << "\nGame constructor called.";
-	};
-	~GAME() {
-		this->played = 0;
-		this->sleep = 0;
-		this->configured = 0;
-		//this->dice.~RANDOM();
-		this->atlas.~ATLAS();
-		this->client.~DIMENSION();
+		void _climate() {
+			switch (this->dice._roll(0, 18)) {
+			default:
+				break;
+			case 6:
+				DINT r = this->dice._roll(0, this->tile.length - 1);
+				TILE* random = &this->tile[r];
+				if(random != nullptr) random->raining += this->dice._roll(0, 1500);
+
+				break;
+			}
+		}
 
 	};
-	DINT played, sleep, configured;
+
+	MAP map;
+	DINT played, debug;
+	static DINT climate;
+	static SINT selected, selectedTile;
 	DICE dice;
-	STATISTICS statistics;
-	ATLAS atlas;
-	DIMENSION client, mouse;
-	CONFIG config;
-	TIME timer;
-	DOLL doll;
-	FLUID water;
-	BOX box;
-	
+	static CODEX library;
+	static CAMERA camera;
+	void _debug() {
+		this->map.enabled = 1;
+	}
+
 	void _config() {
-		this->config.map.w = 4;
-		this->config.map.h = 4;
-		this->config.atlas.w = 2;
-		this->config.atlas.h = 1;
-		DINT mw = this->config.map.w , mh = this->config.map.h, ah = this->config.atlas.h, aw = this->config.atlas.w, count = 0; // a > m
-		MAP *map;
-		this->atlas.measure.w = 0;
-		this->atlas.measure.h = 0;
-		this->atlas.measure.size = 3;
-		std::cout << "\nSetting atlas.";
-		this->timer._clock();
-		//this->atlas.maps.block = this->config.atlas.w * this->config.atlas.h;
-		for (DINT x = 0; x < aw; x++) {
-			for (DINT y = 0; y < ah; y++) {
-				map = new MAP;
-				map->measure.size = this->atlas.measure.size;
-				map->measure.x = this->client.w - (x + 1) * (mw * (8 * map->measure.size));
-				map->measure.y = 0 + y * (mh * (8 * map->measure.size));
-				map->measure.w = (8 * map->measure.size) * mw;
-				map->measure.h = (8 * map->measure.size) * mh;
-				map->position.x = x;
-				map->position.y = y;
-				map->position.w = mw;
-				map->position.h = mh;
-				map->count = count;
-				map->_set();
-				this->atlas.maps << *map;
-				delete map;
-				count++;
-			}
+		//this->map.tile.debug = 1;
+		DINT creatures = 2;
+		DINT size = 4;
+		GAME::selected = -1;
+		GAME::selectedTile = -1;
+		GAME::climate = 0;
+		GAME::MAP::debug = 1;
+		GAME::MAP::targeting = 0;
+		GAME::MAP::speed = 0.12;
+		GAME::MAP::scale = 2;
+		GAME::camera.speed = 0.9;
+		GAME::MAP::position = { state.w / 2, state.h / 2 };
+		GAME::MAP::max = { -size, -size, size, size };
+		this->map._gen(2, 2);
+
+		if (1 == 0) {
+			this->map._app("character-veraccus", "Veraccus", 0);
+			this->map._app("character-brittany", "Brittany", 0);
+
 		}
-		std::cout << "\nAtlas set: " << this->timer._difference(this->timer);
-		this->atlas.measure.w = (this->config.map.w * 8 * this->atlas.measure.size) * this->config.atlas.w;
-		this->atlas.measure.h = (this->config.map.h * 8 * this->atlas.measure.size) * this->config.atlas.h;
-		this->atlas.measure.x = this->client.w - this->atlas.measure.w;
-		this->atlas.measure.y = 0;
+		std::cout << "\nConfigured: ";
+		//std::cout << GAME::library.move.length << " moves, ";
+		std::cout << GAME::library.animation.length << " animations, ";
+		std::cout << GAME::library.sprite.length << " sprites, ";
+		std::cout << GAME::library.base.length << " basenames, ";
+		std::cout << GAME::library.prefix.length << " prefixes, ";
+		std::cout << GAME::library.suffix.length << " suffixes";
+
+		//GAME::library._dump();
+		//GAME::library._dump();
 
 	}
 
-
-	DINT _play() {
-		if (this->configured != 1) {
-			this->_config();
-			this->configured = 1;
-		}
-		this->atlas._pre();
-		if (this->atlas.creatures.length < ENGINE_CREATURE_AMOUNT) {
-			switch (this->dice._roll(0, 8)) {
+	void _play() {
+		if (this->debug != 1) this->_debug();
+		if (this->map.creature.length < 6) {
+			switch (this->dice._roll(0, 1)) {
 			default:
+				if (this->map._countTile(ENGINE_TYPE_TILE_WATER, 1) > 0) {
+					if(GAME::climate) this->map._app("blub", "", -1, ENGINE_TYPE_TILE_WATER);
+				}
 				break;
 			case 1:
-				this->atlas._appear(ENGINE_CREATURE_REAPER);
-				break;
-			case 2:
-				this->atlas._appear(ENGINE_D);
-				break;
-			case 4:
-				this->atlas._appear(ENGINE_CREATURE_DEFENSE);
-				break;
-			case 6:
-				this->atlas._appear(ENGINE_CREATURE_OFFENSE);
-				break;
-			case 7:
-				this->atlas._appear(ENGINE_CREATURE_HALT);
+				if (this->map._countTile(ENGINE_TYPE_TILE_MEADOW, 1) > 0) {
+					this->map._app("dummy", "");
+				}
 				break;
 			}
 		}
-
-		if (this->atlas.resources.length < ENGINE_RESOURCE_AMOUNT) {
-			this->dice._roll(0, 8);
-			switch (this->dice.value.i) {
+		this->map._clean();
+		if(GAME::climate) this->map._climate();
+		this->map._move();
+		/*
+		if (this->map.creature.length < 5) {
+			//this->map._appear(GAME::library.animation[this->dice._roll(0, GAME::library.animation.length - 1)], 1);
+			switch (this->dice._roll(0, 1)) {
 			default:
 				break;
-			case 2:
-				this->atlas._appear(ENGINE_RESOURCE_BERRY);
+			case 0:
+				this->map._appear(GAME::library.animation[GAME::library._asearch("blub")], 1);
 				break;
-			case 4:
-				this->atlas._appear(ENGINE_RESOURCE_PLANT);
-				break;
-			case 6:
-				this->atlas._appear(ENGINE_RESOURCE_STONE);
-				break;
-			case 8:
-				this->atlas._appear(ENGINE_RESOURCE_CURRENCY);
+			case 1:
+				this->map._appear(GAME::library.animation[GAME::library._asearch("spack")], 1);
 				break;
 			}
+			//std::cout << "\n " << this->map.creature[this->map.creature.last].tag.name.text << " has appeared.";
 		}
-		this->atlas._update();
-		this->atlas._movement();
-		if(this->doll.exist) this->doll._gravitate();
-		//this->water._liquid();
-		this->statistics._loop();
-		this->box.angle.x += 1.0;
-		this->box.angle.y += 1.0;
-		if (this->box.angle.x >= 360.0) {
-			this->box.angle.x = this->box.angle.x - 360.0;
-		}
-		if (this->box.angle.y >= 360.0) {
-			this->box.angle.y = this->box.angle.y - 360.0;
-		}
+		this->map._clean();
+		this->map._battle();
+		//this->map._update();
+		this->map._movage();
+		*/
 
-		return this->played;
 	}
 };
+CODEX GAME::library;
+DIMENSION GAME::MAP::measure;
+DINT GAME::MAP::scale;
+DINT GAME::MAP::debug;
+DINT GAME::MAP::targeting;
+POS GAME::MAP::position;
+POS GAME::MAP::tiling;
+double GAME::MAP::speed;
+GAME::CAMERA GAME::camera;
+SINT GAME::selected;
+SINT GAME::selectedTile;
+DINT GAME::climate;
+POS GAME::MAP::init;
+POS GAME::MAP::current;
+POS GAME::MAP::max;
+CHART <GAME::ABILITY> GAME::MAP::action;

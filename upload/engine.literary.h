@@ -1,29 +1,37 @@
+
 #define B	{0, 0, 0}
 #define W	{255, 255, 255}
-#define R	{255, 0, 0}
-#define DR	{125, 0, 0}
-#define LR	{255, 75, 75}
+#define R	{0, 0, 255}
+#define DR	{0, 0, 125}
+#define LR	{75, 75, 255}
 #define G	{0, 255, 0}
 #define LG	{125, 255, 125}
 #define DG	{25, 145, 25}
-#define BLG {45, 170, 80}
-#define BL	{0, 0, 255}
-#define DBL	{0, 0, 175}
-#define LBL {75, 75, 200}
-#define Y	{225, 225, 125}
+#define BLG {80, 170, 45}
+#define BL	{255, 0, 0}
+#define DBL	{175, 0, 0}
+#define LBL {200, 75, 75}
+#define Y	{125, 225, 225}
 #define GR	{125, 125, 125}
 #define DGR	{50, 50, 50}
 #define LGR {200, 200, 200}
-#define BRN	{215, 135, 25}
-#define LBR {250, 195, 95}
-#define DBR	{190, 50, 10}
-#define PNK	{255, 190, 200}
-#define DPNK {220, 80, 190}
-#define LPNK {255, 200, 210}
-#define X	{0, 0, 0, 0}
+#define BRN	{25, 135, 215}
+#define LBR {95, 195, 250}
+#define DBR	{10, 50, 190}
+#define PNK	{200, 190, 255}
+#define DPNK {190, 80, 220}
+#define LPNK {200, 200, 255}
+#define X	{235, 235, 235, 0}
+#define Z	{0, 0, 0, 0, 1}
+
+#define BG	{100, 100, 100}
+
+#define CLRS {LR, R, DR, LG, G, DG, LBL, BL, DBL, Y, LGR, GR, DGR, LBR, BRN, DBR, PNK, B, W, X};
 
 
-#define ENGINE_MAP_TEST				{0.000001, -1, -1, '*', '*',	{{R, G, B, R, G, B, R, G, B, R, G, B, R, G, B, R, G, B, R, G, B, R, G, B, R}, 3}}
+#define ENGINE_SPRITE_ZERO	{R, G, B, R, G, B, R, G, B, R, G, B, R, G, B, R, G, B, R, G, B, R, G, B, R}
+
+#define ENGINE_MAP_TEST				{0.000001, -1, -1, '*', '*',	{{R, G, B, R, G, B, R, G, B, R, G, B, R, G, B, R, G, B, R, G, B, R, G, B, R}, 5}}
 #define ENGINE_MAP_ZERO				{0.00001, 48, 0, '0', '0',		{{B, B, B, B, B, B, X, X, X, B, B, B, B, B, B, R, G, B, R, G, B, R, G, B, R}, 3}}
 #define ENGINE_MAP_ONE				{0.00002, 49, 1, '1', '1',		{{X, B, X, X, X, B, B, B, B, B, X, B, X, X, B, R, G, B, R, G, B, R, G, B, R}, 2}}
 #define ENGINE_MAP_TWO				{0.00003, 50, 2, '2', '2',		{{B, X, B, B, B, B, X, B, X, B, B, B, B, X, B, R, G, B, R, G, B, R, G, B, R}, 3}}
@@ -67,6 +75,10 @@
 #define ENGINE_MAP_AND				{0.00041, 38, -1, '&', '&',		{{X, B, X, B, X, B, X, B, X, B, B, X, X, B, X, X, X, B, X, B, B, R, G, B, R}, 4}}
 #define ENGINE_MAP_EXCLAMATION		{0.00042, 33, -1, '!', '!',		{{B, B, B, X, B, B, X, B, X, B, B, X, X, B, X, X, X, B, X, B, B, R, G, B, R}, 1}}
 #define ENGINE_MAP_DOT				{0.00043, 46, -1, '.', '.',		{{X, X, X, X, B, B, X, B, X, B, B, X, X, B, X, X, X, B, X, B, B, R, G, B, R}, 1}}
+#define ENGINE_MAP_BRACKET_LEFT		{0.00044, -1, -1, '(', '(',		{{X, B, B, B, X, B, X, X, X, B}, 2}}
+#define ENGINE_MAP_BRACKET_RIGHT	{0.00045, -1, -1, ')', ')',		{{B, X, X, X, B, X, B, B, B, X}, 2}}
+#define ENGINE_MAP_SLASH_FORWARD	{0.00046, -1, -1, '/', '/',		{{X, X, X, X ,B, X, B, B, B, X, B, X, X, X, X}, 3}}
+
 #define ENGINE_MAP_DUMMY			{0.00050, -1, -1, '\0', '\0',	{{R, W, W, W, W, W, W, W, W, W, W, W, W, W, BL}, 3}}
 
 /*
@@ -118,4 +130,27 @@
 #define ENGINE_MAP_DOT				{0.00043, 46, -1, '.', '.',		{1, 5, X, X, X, X, B, B, X, B, X, B, B, X, X, B, X, X, X, B, X, B, B, R, G, B, R}}	
 
 */
-#define ENGINE_TYPOGRAPH			{ENGINE_MAP_ZERO, ENGINE_MAP_ONE, ENGINE_MAP_TWO, ENGINE_MAP_THREE, ENGINE_MAP_FOUR, ENGINE_MAP_FIVE, ENGINE_MAP_SIX, ENGINE_MAP_SEVEN, ENGINE_MAP_EIGHT, ENGINE_MAP_NINE, ENGINE_MAP_A, ENGINE_MAP_B, ENGINE_MAP_C, ENGINE_MAP_D, ENGINE_MAP_E, ENGINE_MAP_F, ENGINE_MAP_G, ENGINE_MAP_H, ENGINE_MAP_I, ENGINE_MAP_J, ENGINE_MAP_K, ENGINE_MAP_L, ENGINE_MAP_M, ENGINE_MAP_N, ENGINE_MAP_O, ENGINE_MAP_P, ENGINE_MAP_Q, ENGINE_MAP_R, ENGINE_MAP_S, ENGINE_MAP_T, ENGINE_MAP_U, ENGINE_MAP_V, ENGINE_MAP_W, ENGINE_MAP_X, ENGINE_MAP_Y, ENGINE_MAP_Z, ENGINE_MAP_SPACE, ENGINE_MAP_QUESTION, ENGINE_MAP_MINUS, ENGINE_MAP_PLUS, ENGINE_MAP_AND, ENGINE_MAP_EXCLAMATION, ENGINE_MAP_DOT}
+
+#define ENGINE_TYPO	{ENGINE_MAP_ZERO}
+#define ENGINE_TYPOGRAPH			{ENGINE_MAP_ZERO, ENGINE_MAP_ONE, ENGINE_MAP_TWO, ENGINE_MAP_THREE, ENGINE_MAP_FOUR, ENGINE_MAP_FIVE, ENGINE_MAP_SIX, ENGINE_MAP_SEVEN, ENGINE_MAP_EIGHT, ENGINE_MAP_NINE, ENGINE_MAP_A, ENGINE_MAP_B, ENGINE_MAP_C, ENGINE_MAP_D, ENGINE_MAP_E, ENGINE_MAP_F, ENGINE_MAP_G, ENGINE_MAP_H, ENGINE_MAP_I, ENGINE_MAP_J, ENGINE_MAP_K, ENGINE_MAP_L, ENGINE_MAP_M, ENGINE_MAP_N, ENGINE_MAP_O, ENGINE_MAP_P, ENGINE_MAP_Q, ENGINE_MAP_R, ENGINE_MAP_S, ENGINE_MAP_T, ENGINE_MAP_U, ENGINE_MAP_V, ENGINE_MAP_W, ENGINE_MAP_X, ENGINE_MAP_Y, ENGINE_MAP_Z, ENGINE_MAP_SPACE, ENGINE_MAP_QUESTION, ENGINE_MAP_MINUS, ENGINE_MAP_PLUS, ENGINE_MAP_AND, ENGINE_MAP_EXCLAMATION, ENGINE_MAP_DOT, ENGINE_MAP_BRACKET_LEFT, ENGINE_MAP_BRACKET_RIGHT, ENGINE_MAP_SLASH_FORWARD}
+
+
+
+#define ENGINE_ZERO		{0.00001, -1, 0, '0', '0', {ENGINE_SPRITE_ZERO, 3}}
+#define ENGINE_ONE		{1, '1'}
+#define ENGINE_TWO		{2, '2'}
+#define ENGINE_THREE	{3, '3'}
+#define ENGINE_FOUR		{4, '4'}
+#define ENGINE_FIVE		{5, '5'}
+#define ENGINE_SIX		{6, '6'}
+#define ENGINE_SEVEN	{7, '7'}
+#define ENGINE_EIGHT	{8, '8'}
+#define ENGINE_NINE		{9, '9'}
+
+#define ENGINE_DUMMY	{-1, '?'}
+
+#define ENGINE_WRIT	{ENGINE_MAP_ZERO}
+
+#define ENGINE_WRITER	{ENGINE_ZERO, ENGINE_ONE, ENGINE_TWO, ENGINE_THREE, ENGINE_FOUR, ENGINE_FIVE, ENGINE_SIX, ENGINE_SEVEN, ENGINE_EIGHT, ENGINE_NINE}
+
+

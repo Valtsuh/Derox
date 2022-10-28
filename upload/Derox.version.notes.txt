@@ -1,0 +1,87 @@
+/*
+*
+*		Created by Jussi 'Valtsu(h)' Männistö
+*
+*		Version notes
+*
+*/
+
+
+	x.x.x.x
+		[Game]
+		[Code]		
+		[Other]
+
+	0.3.1.2
+		[Game]
+			- Changed from 2D topdown view to isometric.
+			- Some tiles disabled, due to changes.
+			- Items disabled, to be reimplemented.
+			- Creature name generation redefined, now instead uses (predefined)words to create a full name.
+			- Added click function to creatures, showing a status window.
+			- Functions to zoom and move around with mouse.
+			- Saving disabled, for now.
+		[Code]
+			- Play area hard limited to 5 x 5 tiles.
+			- Polygon preparements.
+		[Other]
+			- Showing FPS(currently capped at 20 ish) at the windows top bar, along with version.
+			- Still plenty of bugs to fix(ie. creatures not disappearing correctly).
+			
+
+	0.2.1.2
+		[Game]
+			- Some graphics and physics preparements.
+			- Health indication updated to be a little more accurate.
+			- Creatures on meadow-tiles (green), will be healed.
+			- Creatures on swamp-tiles (blue-greenish), will be slowed down.
+			- Creature name generation (Name in green meaning the creature is carrying a berry for healing).
+			- Save file, saving the highest creature streak (defeats), with loops counted and name.
+		[Code]	
+			- Math library, thanks to some googling.
+			- CHART quickly obsoleting INDEX (array structure).
+			- Map background moved from individual sprite writing, to generation.
+			- Map individual pixel shaders and lights.
+		[Other]
+			- Memory optimizations and leak fixes.
+
+
+	0.1.1.2
+		[Game]
+			- Controls removed, for now.
+			- Map generation.
+			- Some sort of inventory for creatures in addition with gathering items(non-direct).
+			- Some graphics added, instead of just boxes of colors.
+			- Some preparations for creature mutations, on thought level still.
+		[Code]
+			- List handling updated, INDEX obsoleting LIST.
+			- Some cleaning.
+
+
+	0.0.1.2
+		[Game]
+			- Some collision detection and handling added.
+		[Code]
+			- Custom text now handles negative values.
+			- Revamp and clean up.
+
+
+	0.0.0.2
+		[Game]
+			- 'F' key should work now.
+		[Code]
+			- Added some much needed list handling.
+			- Some preparations / attempts at drawing characters(letters, numbers, etc.).
+		
+
+	0.0.0.1
+		[Game]
+			- A window with some rectangles moving.
+			- Pressing 'F' button shows shows a list.
+			- Hover with mouse to see more description.
+
+		[Code]
+			- A some what working program, with plenty to update.
+			- Aware of the 'F' needed to be pushed twice for it to show first time.
+
+
