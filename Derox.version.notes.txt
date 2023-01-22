@@ -11,6 +11,32 @@
 		[Game]
 		[Code]		
 		[Other]
+		[Bugfixes]
+
+	0.4.1.2
+		[Game]
+			- Creatures now heal after a certain amount of steps(from tile to tile).
+			- Creatures use pathfinding by chance (lines drawn across map with various colors)
+		[Code]		
+			- Now able to convert doubles to drawable text, with decimal precising.
+			- New array structure IMAP implemented, with some updates from previous structures.
+				Such as z-ordering.
+			- Preparements for new sprite file type, working 20 - 40x faster.
+				For example load times down to 10 - 20 ms, from 300 - 400 ms.
+					(Depending on hard drive)
+		[Other]
+			- Added ":" (colon) to text drawing.
+			- Added "," (comma) to text drawing.
+			- Recolored the letter "S" to not be exactly like "5"(five).
+			- Some more polygon preparements and fixes.
+		[Bugfixes]
+			- Invisible creatures.
+			- Creatures being stuck after battle.
+			- Unable to click on a creature.
+			- Fixed a crucial error in polygon value handling, where negative values were not considered
+				during file read, causing snowbally effects of unwanted values.
+			- Rolling dice for doubles, now properly gives results from a given range (instead of approximates).
+			- Rolling dice for integers, now properly gives reslts.
 
 	0.3.1.2
 		[Game]
