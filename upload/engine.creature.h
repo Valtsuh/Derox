@@ -31,11 +31,6 @@ struct STATUS {
 	DINT immune, burning, frozen, vulnerable;
 };
 
-struct BIOME {
-	BIOME() {};
-
-
-};
 
 struct MOVEMENT {
 	MOVEMENT() {
@@ -73,6 +68,7 @@ struct MOVEMENT {
 		if (this->to.x == this->current.x && this->to.y == this->current.y) this->arrived = 1;
 	}
 
+
 	void _advance(double speed) {
 		this->speed = speed;
 		switch (this->direction) {
@@ -97,42 +93,17 @@ struct MOVEMENT {
 		}
 	}
 
-	DINT _able(DINT type) {
+	bool _able(DINT type) {
 		for (DINT i = 0; i < this->type.length; i++) {
-			if (this->type[i] == type) return 1;
+			if (this->type[i] == type) {
+				return true;
+			}
 		}
-		return 0;
+		return false;
 	}
 
 };
 struct SEX {
 	SEX() {};
 	FIGURE gender;
-};
-
-struct ITEM {
-	ITEM(const char name[]) {
-		this->name = name;
-		this->amount = 0;
-	};
-	ITEM() {
-		this->amount = 0;
-	};
-
-	STRING name;
-	DINT amount;
-
-};
-
-struct INVENTORY {
-	INVENTORY() {};
-
-	CHART <ITEM> item;
-
-
-	void _trash() {
-		this->item._close();
-
-	}
-
 };

@@ -5,7 +5,7 @@ struct TEXTUAL {
 		this->x = x;
 		this->y = y;
 		this->color = c;
-		this->scale = scale;
+		this->scale = {(double)scale, (double)scale};
 		this->spacing = spacing;
 		this->display = 1;
 		this->id = -1;
@@ -20,7 +20,8 @@ struct TEXTUAL {
 		this->id = -1;
 	};
 	STRING string;
-	DINT x, y, scale, spacing, display;
+	DINT x, y, spacing, display;
+	SPOT scale;
 	SINT id;
 	COLOR color;
 
@@ -31,13 +32,16 @@ struct TEXTUAL {
 
 struct WRITER {
 	WRITER(std::initializer_list<LIT> lts) {
-		std::cout << "\nConstructing WRITER.";
+		TIME time;
+		time._clock(0);
 		HOLDER<LIT> lits = lts;
 		for (DINT i = 0; i < lits._size(); i++) {
 			lit << lits[i];
 		}
 		//dummy = ENGINE_DUMMY;
 		dummy = ENGINE_MAP_DUMMY;
+		time._increment(time);
+		std::cout << "\nConstructed WRITER in " << time._since(1) << " ms.";
 	};
 	static CHART <LIT> lit;
 	static CHART <TEXTUAL> text;
@@ -52,7 +56,7 @@ struct WRITER {
 			for (DINT p = 0; p < tmp.shape.pixels.length; p++) {
 				pix = tmp.shape.pixels[p];
 				if (pix.color.exist) {
-					if (tmp.key >= 0) pix.color = c;
+					//if (tmp.key >= 0) pix.color = c;
 					px = x + (pix.x * size) + (ll * size) + (length * spacing);
 					py = y + (pix.y * size);
 					state._set(px, py, pix.color, size, size);
@@ -70,6 +74,13 @@ struct WRITER {
 		return dummy;
 	}
 
+	static char _valid(DINT key) {
+		for (DINT i = 0; i < lit.length; i++) {
+			if (lit[i].key == key) return lit[i].lower;
+		}
+
+		return '?';
+	}
 	static char _c(DINT n) {
 		for (DINT l = n; l < WRITER::lit.length; l++) {
 			if (WRITER::lit.exist[l]) {
@@ -81,7 +92,7 @@ struct WRITER {
 		}
 		return '?';
 	}
-	static char* _itc(SINT number = -1) {
+	static char* _itc(SLINT number = -1) {
 		//char write[16];
 		write = {};
 		DINT length = 0;
@@ -115,6 +126,83 @@ struct WRITER {
 		return write.text;
 	}
 
+	static char* _dtc(double number = 0.0, DINT decimals = 3) {
+		if (number == 0.0) {
+			write._append("0.0");
+		}
+		else {
+			STRING back, front;
+			if (number < 0.0) {
+				front._append("-");
+				number = MATH::_dabs(number);
+			}
+
+			DINT f = (DINT)number;
+			number = number - (double)f;
+			front._append(WRITER::_itc(f));
+			front._app('.');
+			DINT spacing = 0;
+			if (number < 1.0) {
+				spacing = 1;
+				number += 1.0;
+			}
+			do {
+				number *= 10.0;
+			} while (number != trunc(number));
+
+			back._append(WRITER::_itc((SLINT)number));
+
+
+			write._append(front.text);
+			STRING decimaled;
+			DINT d = 0;
+			do {
+				decimaled._app(back[d + spacing]);
+				decimals--;
+				d++;
+			} while (decimals > 0);
+			write._append(decimaled.text);
+
+		}
+		return write.text;
+	}
+	static double _ctd(const char text[], DINT decimals = 3) {
+		INTC f, b;
+		DINT l = 0;
+		DINT s = (text[0] == '-') ? (1) : (0);
+		STRING n = text;
+		for (DINT i = s; text[i] != '.'; i++) {
+			f.number << UTILS::_ctn(text[i]);
+			l++;
+		}
+		n._slice(0, l);
+		DINT rounder = 0;
+		DINT ll = (s == 1) ? (l + 1) : (l);
+		for (DINT i = ll; text[i] != '\0'; i++) {
+			DINT n = UTILS::_ctn(text[i]);
+			b.number << UTILS::_ctn(text[i]);
+			rounder++;
+		}
+
+		double r = (double)f._number();
+		double rb = b._double();// (double)b._number() / MATH::_tnth(1, rounder - 1);
+		return (s == 1)?(-(r + rb)):(r + rb);
+	}
+	static SLINT _cti(STRING string) {
+		SLINT digits = 0;
+		SLINT modifier = 0;
+		DINT modder = string.length;
+		for (DINT i = 0; i < string.length; i++) {
+			LIT chr = WRITER::_lit(string[i]);
+			modifier = MATH::_tnth(chr.numeric, modder);
+			digits += modifier;
+			modder--;
+			std::cout << "\n>" << chr.numeric << ", " << modifier;
+		}
+		digits /= 10;
+		std::cout << "\n>>>" << digits;
+		return digits;
+	}
 	static void _draw(TEXTUAL text, COLOR c = X) {
 		DINT px, py, ll = 0;
 		LIT tmp;
@@ -125,9 +213,9 @@ struct WRITER {
 				pix = tmp.shape.pixels[p];
 				if (pix.color.exist) {
 					if (c.exist) pix.color = c;
-					px = text.x + (pix.x * text.scale) + (ll * text.scale) + (length * text.spacing);
-					py = text.y + (pix.y * text.scale);
-					state._set(px, py, pix.color, text.scale, text.scale);
+					px = text.x + (pix.x * (DINT)text.scale.x) + (ll * (DINT)text.scale.x) + (length * text.spacing);
+					py = text.y + (pix.y * (DINT)text.scale.y);
+					state._set(px, py, pix.color, (DINT)text.scale.x, (DINT)text.scale.y);
 				}
 			}
 			ll += tmp.shape.size.w;

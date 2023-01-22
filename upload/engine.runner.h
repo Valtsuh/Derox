@@ -1,359 +1,373 @@
-namespace Engine2 {
+
+struct STATISTICS {
+	STATISTICS() {
+		this->fps = 0;
+		//drx::ENGINE::STATISTICS::nf = std::chrono::system_clock::now();
+		//drx::ENGINE::STATISTICS::lf = nf - frames{ 1 };
+		//drx::ENGINE::STATISTICS::lf = std::chrono::system_clock::now();
+		STATISTICS::nf = std::chrono::system_clock::now();
+		STATISTICS::lf = std::chrono::system_clock::now();
+	};
+
+	DINT fps;
+	COUNTER loops;
+	static double elapsed;
+	static TIME last, current;
+	static std::chrono::system_clock::time_point nf, lf;
+	static std::chrono::high_resolution_clock::time_point hr;
+
+
+	void _loop() {
+		this->loops.current += 1;
+		this->current._increment(this->current);
+		DINT since = this->current._since();
+		if (this->loops.current > 0 && since > 0) {
+			/*
+			std::cout << "\n> ";
+			std::cout << this->elapsed.lh << ":" << this->elapsed.lm;
+			std::cout << ":" << this->elapsed.ls << ":" << this->elapsed.lms;
+			std::cout << "(" << this->elapsed._since() << ")";
+			*/
+			this->fps = this->loops.current / since;
+		}
+	}
+
+	void _sleep(SINT target = 60) {
+		if (target != -1 && target < 60) {
+			target = 1000 / (target + (target / 2) / 2);
+			/*
+			std::cout << "\nTime: " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - drx::ENGINE::STATISTICS::lf).count() << " ms";
+			std::this_thread::sleep_until(drx::ENGINE::STATISTICS::nf);
+			drx::ENGINE::STATISTICS::lf = drx::ENGINE::STATISTICS::nf;
+			drx::ENGINE::STATISTICS::nf += frames {1};
+			*/
+
+			//drx::ENGINE::STATISTICS::lf = std::chrono::system_clock::now();
+			STATISTICS::lf = std::chrono::system_clock::now();
+			//std::chrono::duration<double, std::milli> work = drx::ENGINE::STATISTICS::lf - drx::ENGINE::STATISTICS::nf;
+			std::chrono::duration<double, std::milli> work = STATISTICS::lf - STATISTICS::nf;
+			if (work.count() < target) {
+				std::chrono::duration<double, std::milli> delta_ms(target - work.count());
+				auto delta_duration = std::chrono::duration_cast<std::chrono::milliseconds>(delta_ms);
+				std::this_thread::sleep_for(std::chrono::milliseconds(delta_duration.count()));
+			}
+			//drx::ENGINE::STATISTICS::nf = std::chrono::system_clock::now();
+			STATISTICS::nf = std::chrono::system_clock::now();
+			//std::chrono::duration<double, std::milli> sleep = drx::ENGINE::STATISTICS::nf - drx::ENGINE::STATISTICS::lf;
+			std::chrono::duration<double, std::milli> sleep = STATISTICS::nf - STATISTICS::lf;
+
+			//std::cout << "\nSleep: " << (work.count() + sleep.count()) << " ms";
+			//drx::ENGINE::STATISTICS::last.elapsed = (DINT)(work.count() + sleep.count());
+			STATISTICS::elapsed = work.count() + sleep.count();
+			//std::cout << "\n" << STATISTICS::last.elapsed;
+
+		}
+	}
+
+};
+
+namespace drx {
 	static SPOT mouse;
-	static DIMENSION view;
-	static RECTANGLE bg;
-	struct VERSION {
-		VERSION() {
-			this->lesser = ENGINE_VERSION_LESSER;
-			this->minor = ENGINE_VERSION_MINOR;
-			this->large = ENGINE_VERSION_LARGE;
-			this->major = ENGINE_VERSION_MAJOR;
+	static DICE dice;
+
+	struct CONFIGURATION {
+		CONFIGURATION(DINT w, DINT h, DINT s) {
+			width = w;
+			height = h;
+			scale = s;
+			srand((unsigned int)time(NULL));
+		};
+		CONFIGURATION() {};
+		static DINT width, height, scale;
+	};
+
+	struct WINDOW {
+		WINDOW() {
+			//drx::WINDOW::handle = 0;
+		};
+		~WINDOW() {};
+		static HWND handle;
+		static WNDCLASS info;
+		static MSG msg;
+		static DIMENSION measure, client, mouse, mouseLast;
+		
+		static LRESULT CALLBACK _c(HWND hwnd, UINT uMsg, WPARAM w, LPARAM l);
+
+		static void _register(WNDPROC proc, HINSTANCE i, const wchar_t name[]) {
+			WINDOW::info = {};
+			WINDOW::info.lpfnWndProc = proc;
+			WINDOW::info.hInstance = i;
+			WINDOW::info.lpszClassName = name;
+			WINDOW::info.hbrBackground = 0; // Note to self handle WM_ERASEBKGND [white stuck]
+			WINDOW::info.hCursor = 0;
+			WINDOW::info.style = 0;
+			RegisterClass(&WINDOW::info);
+			std::cout << "\nWindow registered. (" << GetCurrentThreadId() << ", " << GetLastError() << ")";
+
+		};
+
+		static HWND _create(DINT w, DINT h, DINT x, DINT y, HINSTANCE i, const wchar_t name[], bool fullscreen = false) {
+			
+			WINDOW::_register(drx::WINDOW::_c, i, name);
+			if (fullscreen) {
+				RECT rect;
+				GetClientRect(GetDesktopWindow(), &rect);
+				WINDOW::handle = CreateWindow(WINDOW::info.lpszClassName, L"Title", WS_BORDER, 0, 0, rect.right, rect.bottom, NULL, NULL, WINDOW::info.hInstance, NULL);
+				SetWindowLong(WINDOW::handle, GWL_STYLE, 0);
+			}
+			else {
+				WINDOW::handle = CreateWindow(WINDOW::info.lpszClassName, L"Title", WS_OVERLAPPEDWINDOW, x, y, w, h, NULL, NULL, WINDOW::info.hInstance, NULL);
+			}
+			if (WINDOW::handle == NULL) {
+				std::cout << "\nWINDOW::handle null";
+				system("pause");
+			}
+			else {
+				std::cout << "\nWindow created. (" << WINDOW::handle << ", " << GetLastError() << ")";
+				ShowWindow(WINDOW::handle, SW_NORMAL);
+				RECT rect;
+				if (fullscreen) {
+					GetWindowRect(WINDOW::handle, &rect);
+					WINDOW::measure = { 0, 0, rect.right - rect.left, rect.bottom - rect.top };
+				}
+				else {
+					WINDOW::measure = { x, y, w, h };
+					GetClientRect(WINDOW::handle, &rect);
+				}
+				state._config(0, 0, rect.right - rect.left, rect.bottom - rect.top);
+			}
+
+
+			return WINDOW::handle;
 		}
 
-		DINT lesser, minor, large, major;
+	};
+
+	struct VERSION {
+		VERSION() {
+			lesser = ENGINE_VERSION_LESSER;
+			minor = ENGINE_VERSION_MINOR;
+			large = ENGINE_VERSION_LARGE;
+			major = ENGINE_VERSION_MAJOR;
+		}
+
+		static DINT lesser, minor, large, major;
+
+		static STRING _current() {
+			STRING c;
+			c = WRITER::_itc(VERSION::major);
+			c._app('.');
+			c._app(*WRITER::_itc(VERSION::large));
+			c._app('.');
+			c._app(*WRITER::_itc(VERSION::lesser));
+			c._app('.');
+			c._app(*WRITER::_itc(VERSION::minor));
+			return c;
+		}
 
 	};
 	struct ENGINE {
+
 		ENGINE() {
-			this->on = 0;
-			this->configured = 0;
+			this->on = false;
+			this->configured = false;
 			WRITER(ENGINE_TYPOGRAPH);
-			this->game.played = 1;
 		};
 		struct KEYER {
 			KEYER() {};
 
 			struct BUTTON {
 				BUTTON() {
-					this->down = 0;
+					this->down = false;
 				};
-				DINT down;
+				bool down;
 			};
 
 			struct MOUSE {
 				MOUSE() {};
-				BUTTON left, middle, right;
+				BUTTON left, middle, right, up, down;
 			};
 
 			MOUSE mouse;
 			BUTTON ctrl, shift, alt, a, s, d, w;
 		};
-		struct WINDOW {
-			WINDOW() {
-				this->handle = 0;
-				this->info = {};
-				this->msg = { 0 };
-				this->x = 0;
-				this->y = 0;
-				this->width = 0;
-				this->heigth = 0;
-				this->window = {};
-				this->client = {};
-				this->result = -1;
-			};
-			~WINDOW() {
-				this->handle = 0;
-				this->info = {};
-				this->msg = { 0 };
-				this->x = 0;
-				this->y = 0;
-				this->width = 0;
-				this->heigth = 0;
-				this->window = {};
-				this->client = {};
-			};
-			HWND handle;
-			WNDCLASS info;
-			RECT client, window;
-			DINT width, heigth, x, y;
-			MSG msg;
-			DIMENSION mouse, mouseLast;
-			BOOL result;
-			static DIMENSION measure;
-			//TRACKMOUSEEVENT me;
-
-			CHART<DISPLAY_DEVICE> dd;
-			CHART<DEVMODE> dm;
-
-			void _register(WNDPROC proc, HINSTANCE i, const wchar_t name[]) {
-				this->info = {};
-				this->info.lpfnWndProc = proc;
-				this->info.hInstance = i;
-				this->info.lpszClassName = name;
-				this->info.hbrBackground = 0; // Note to self handle WM_ERASEBKGND [white stuck]
-				this->info.hCursor = 0;
-				this->info.style = 0;
-				RegisterClass(&this->info);
-				std::cout << "\nWindow registered. (" << GetCurrentThreadId() << ", " << GetLastError() << ")";
-
-			};
-
-			void _device() {
-
-				DINT device = 0;
-				BOOL devi = 0;
-				DISPLAY_DEVICE dd = {};
-				std::cout << "\nChecking devices.";
-				do {
-					devi = EnumDisplayDevicesW(NULL, device, &dd, EDD_GET_DEVICE_INTERFACE_NAME);
-					device++;
-					if (devi != 0)this->dd << dd;
-
-				} while (devi != 0);
-
-				std::cout << "\n Devices found: ";
-
-				for (DINT i = 0; i < this->dd.length; i++) {
-					if (this->dd.exist[i]) {
-						dd = this->dd[i];
-						std::cout << "\n> " << dd.DeviceName;
-						std::cout << " - " << dd.DeviceString;
-						std::cout << " - " << dd.DeviceID;
-						std::cout << " : " << *reinterpret_cast<DWORD64*>(dd.DeviceName);
-						std::cout << "\n Graphics modes: ";
-						BOOL got = 0;
-						DINT j = 0;
-						DEVMODE dev = {};
-						do {
-							got = EnumDisplaySettings(dd.DeviceName, j, &dev);
-							std::cout << "\n>> " << dev.dmDeviceName;
-							std::cout << " - " << dev.dmDriverVersion;
-							std::cout << " - " << dev.dmDriverExtra;
-							std::cout << " - " << dev.dmDisplayFrequency;
-							if (got != 0) this->dm << dev;
-						} while (got != 0);
-
-					}
-				}
-
-			}
-
-			HWND _set(unsigned int w, unsigned int h, unsigned int x, unsigned int y, DINT ui = 1) {
-				this->x = x;
-				this->y = y;
-				this->width = w;
-				this->heigth = h;
-				this->handle = CreateWindow(this->info.lpszClassName, L"Title", WS_OVERLAPPEDWINDOW, this->x, this->y, this->width, this->heigth, NULL, NULL, this->info.hInstance, NULL);
-				//SetWindowLong(this->handle, GWL_STYLE, WS_BORDER);
-				if (this->handle == NULL) {
-					system("pause");
-				}
-				else {
-					/*
-					this->me.cbSize = sizeof(this->me);
-					this->me.dwFlags = TME_HOVER;
-					this->me.hwndTrack = this->handle;
-					this->me.dwHoverTime = 500;
-					TrackMouseEvent(&this->me);
-					*/
-					std::cout << "\nWindow created. (" << this->handle << ", " << GetLastError() << ")";
-					if(ui == 0) SetWindowLong(this->handle, GWL_STYLE, 0);
-					this->_position(w, h, x, y);
-				}
-				return this->handle;
-				POINT* m = new POINT;
-				if (GetCursorPos(m)) {
-					if (ScreenToClient(this->handle, m)) {
-						m->x = (m->x < 0) ? (0) : (m->x);
-						m->y = (m->y < 0) ? (0) : (m->y);
-						this->mouse.x = (DINT)m->x;
-						this->mouse.y = (DINT)m->y;
-					}
-				}
-				delete m;
-			};
-
-			HWND _position(SINT w, SINT h, SINT x, SINT y) {
-				this->x = x;
-				this->y = y;
-				this->width = w;
-				this->heigth = h;
-				SetWindowPos(this->handle, HWND_TOP, this->x, this->y, this->width, this->heigth, SWP_SHOWWINDOW);
-				this->_client();
-				this->_window();
-				//ShowWindow(this->handle, SW_SHOW);
-				//UpdateWindow(this->handle);
-				std::cout << "\nWindow positioned. (" << this->handle << ", " << GetLastError() << "), " << w << ", " << h;
-				return this->handle;
-			}
-
-			void _client() {
-				GetClientRect(this->handle, &this->client);
-			}
-
-			void _window() {
-				GetWindowRect(this->handle, &this->window);
-			}
-
-		};
-		void _update() {
+		void _refresh() {
 			POINT* m = new POINT;
 			if (GetCursorPos(m)) {
-				if (ScreenToClient(this->window.handle, m)) {
+				if (ScreenToClient(drx::WINDOW::handle, m)) {
 					m->x = (m->x < 0) ? (0) : (m->x);
 					m->y = (m->y < 0) ? (0) : (m->y);
-					//mCenter.x = m->x - Engine2::ENGINE::WINDOW::measure.w / 2;
-					//mCenter.y = m->y - Engine2::ENGINE::WINDOW::measure.h / 2;
-					SINT x = this->window.mouse.x - (DINT)m->x;
-					SINT y = this->window.mouse.y - (DINT)m->y;
+					SINT x = drx::WINDOW::mouse.x - (DINT)m->x;
+					SINT y = drx::WINDOW::mouse.y - (DINT)m->y;
 
-					//Engine2::window.mouse.x -= x;
-					//Engine2::window.mouse.y -= y;
-					Engine2::view._vert(x);
-					Engine2::view._hori(y);
-					if (this->window.mouse.x != (DINT)m->x || this->window.mouse.y != (DINT)m->y) {
-						this->window.mouseLast = this->window.mouse;
-						this->window.mouse.x = (DINT)m->x;
-						this->window.mouse.y = (DINT)m->y;
-
-						if (Engine2::ENGINE::keyer.mouse.left.down) {
-							SINT x = this->window.mouse.x - this->window.mouseLast.x;
-							SINT y = this->window.mouse.y - this->window.mouseLast.y;
-
-							for (DINT t = 0; t < this->game.map.tile.length; t++) {
-								GAME::TILE* tile = &this->game.map.tile[t];
-								tile->center.x += x;
-								tile->center.y += y;
-								tile->position.x += x;
-								tile->position.y += y;
-							}
-							
-							for (DINT b = 0; b < this->game.map.creature.length; b++) {
-								GAME::CREATURE* creature = &this->game.map.creature[b];
-								//creature->movement.current.x += x;
-								//creature->movement.current.y += y;
-								//creature->movement.to.x += x;
-								//creature->movement.to.y += y;
-							}
-
-							//GAME::MAP::position.x += x;
-							//GAME::MAP::position.y += y;
-							GAME::camera.offset.x += (SINT)(x * GAME::camera.speed);
-							GAME::camera.offset.y += (SINT)(y * GAME::camera.speed);
-						}
-					}
+					//drx::window.mouse.x -= x;
+					//drx::window.mouse.y -= y;
+					//if (drx::WINDOW::mouse.x != (DINT)m->x || drx::WINDOW::mouse.y != (DINT)m->y) {
+						drx::WINDOW::mouseLast.x = drx::WINDOW::mouse.x;
+						drx::WINDOW::mouseLast.y = drx::WINDOW::mouse.y;
+						drx::WINDOW::mouse.x = (DINT)m->x;
+						drx::WINDOW::mouse.y = (DINT)m->y;
+					//}
 				}
 			}
 			delete m;
 			STRING title;
 			title._append("Engine");
-			title._space(WRITER::_itc(this->stats.fps));
-			title._space(WRITER::_itc(this->version.major));
-			title._append(".");
-			title._append(WRITER::_itc(this->version.large));
-			title._append(".");
-			title._append(WRITER::_itc(this->version.minor));
-			title._append(".");
-			title._append(WRITER::_itc(this->version.lesser));
-			this->test._track({ (double)this->window.mouse.x, (double)this->window.mouse.y, 0.0 });
-			//title._space(WRITER::_c())
-			SetWindowText(this->window.handle, title.wtext);
-			/*
-			if (Engine2::ENGINE::keyer.a.down) this->game.map.position.x -= 10;
-			if (Engine2::ENGINE::keyer.d.down) this->game.map.position.x += 10;
-			if (Engine2::ENGINE::keyer.w.down) this->game.map.position.y -= 10;
-			if (Engine2::ENGINE::keyer.s.down) this->game.map.position.y += 10;
-			*/
+			title._space(WRITER::_itc(drx::ENGINE::stats.fps));
+			title._space(drx::ENGINE::version._current().text);
+			SetWindowText(drx::WINDOW::handle, title.wtext);
 		}
 
-		void _config(DINT x = 0, DINT y = 0) {
-			/*
-			Engine2::ENGINE::WINDOW::measure.w = state.w;
-			Engine2::ENGINE::WINDOW::measure.h = state.h;
-			Engine2::ENGINE::WINDOW::measure.x = x;
-			Engine2::ENGINE::WINDOW::measure.y = y;
-			Engine2::mouse.x = (double)state.w / 2.0;
-			Engine2::mouse.y = (double)state.h / 2.0;
-			Engine2::view.x = -(state.w / 2);
-			Engine2::view.y = -(state.h / 2);
-			Engine2::view.w = (state.w / 2);
-			Engine2::view.h = (state.h / 2);
-			Engine2::bg = { Engine2::view };
+		void _config(DINT w, DINT h, DINT x, DINT y, HINSTANCE i, const wchar_t name[], bool console = false, bool fullscreen = false) {
+			drx::WINDOW::_create(w, h, x, y, i, name, fullscreen);
+			if (!console) ShowWindow(GetConsoleWindow(), SW_HIDE); else ShowWindow(GetConsoleWindow(), SW_SHOW);
+			this->_load();
+			drx::ENGINE::stats.current._clock(0);
+			drx::ENGINE::configured = true;
+			drx::ENGINE::on = true;
+		}
+		virtual void _paint() {}
+		virtual void _update() {}
+		virtual void _load() {}
 
-			*/
-			this->configured = 1;
-			this->on = 1;
-			this->bg = LGR;
-			this->game._config();
-			this->test = ENGINE_POLYGON_DATA_SHIELD;
-			this->test._pos(200, 150);
-			this->sprite = GAME::library.sprite[GAME::library._search("blub")];
-			this->mirrored = this->sprite;
-			SPOT a = { 250.0, 150.0, 0.0 };
-			this->anchor = a;
-			GAME::camera.center = { 0, 0 };
-			GAME::camera.offset = { 0, 0 };
-			GAME::camera.tile = { 0, 0 };
-			this->info = { 10, 10 };
-			//this->image._read("test.bmp");
+		void _run() {
+
+			do {
+				state._clear(LGR);
+				this->_refresh();
+				this->_update();
+				while (PeekMessage(&drx::WINDOW::msg, drx::WINDOW::handle, 0, 0, PM_REMOVE)) {
+					TranslateMessage(&drx::WINDOW::msg);
+					DispatchMessage(&drx::WINDOW::msg);
+				}
+				this->_paint();
+				state._draw(drx::WINDOW::handle);
+				drx::ENGINE::stats._loop();
+				drx::ENGINE::stats._sleep(20);
+				//drx::canvas._clear(DGR);
+				//drx::canvas._draw(drx::WINDOW::handle);
+			} while (drx::ENGINE::on);
 		}
 
-		void _paint() {
-			
-			this->game.map._paint();
-			//std::cout << "\n----";
-			if (GAME::selected >= 0) {
-				GAME::CREATURE c = this->game.map.creature[GAME::selected];
-				this->info.gender._set(c.sex.gender.name.text);
-				this->info.grd._set({ WRITER::_itc(c.guard.point.current) });
-				this->info.str._set({ WRITER::_itc(c.strength.point.current) });
-				this->info.agi._set({ WRITER::_itc(c.agility.point.current) });
-				STRING hlth = WRITER::_itc(c.health.point.current);
-				hlth += " / ";
-				hlth += WRITER::_itc(c.health.point.total);
-				this->info.hlt._set(hlth.text);
-				this->info._draw();
-
-			}
-
-			if (GAME::selectedTile >= 0) {
-				GAME::TILE tile = this->game.map.tile[GAME::selectedTile];
-				STRING info = WRITER::_itc(tile.raining);
-				this->tile.info = { info.text, 25, 125 };
-				this->tile._draw();
-			}
-
-			state._set(GAME::camera.center.x + state.w / 2, GAME::camera.center.y + state.h / 2, BL, 4, 4);
-			state._set(GAME::camera.offset.x + state.w / 2, GAME::camera.offset.y + state.h / 2, BL, 4, 4);
-			//this->test._draw(200, 150);
-			//this->anchor._draw();
-			//state._set((DINT)Engine2::mouse.x - 1, (DINT)Engine2::mouse.y - 1, PNK, 2, 2);
-			DINT size = 8;
-			DINT spacing = 2;
-			POS start = { 0, 0 }, end = { 3, 3 };
-			COLOR color = W;
-			for (DINT n = 0; n < this->aspos.length; n++) {
-				NODE node = this->aspos[n];
-				color = W;
-				if (node.checked) color = GR;
-				if (node.x == start.x && node.y == start.y) color = Y;
-				if (node.x == end.x && node.y == end.y) color = G;
-				if (node.blocked) color = R;
-				state._set(node.x * (size + spacing), node.y * (size + spacing), color, size, size);
-			}
-		}
-
-		COLOR bg;
 		static STATISTICS stats;
 		static KEYER keyer;
-		IMAGE image;
-		ART::NOTE note;
-		CHART<POS> astar;
-		CHART<NODE> aspos;	
-		ART::BOX info, tile;
-		WINDOW window;
-		GAME game;
-		DINT on, configured;
-		COLOR selected;
-		POLYGON test;
-		UTILS::HEX hex;
-		SPRITE sprite, mirrored;
-		ANCHOR anchor;
-		VERSION version;
+		static VERSION version;
+		static bool on, configured;
 	};
 
 };
-//SPOT Engine2::mouse;
-STATISTICS Engine2::ENGINE::stats;
-DIMENSION Engine2::ENGINE::WINDOW::measure;
-Engine2::ENGINE::KEYER Engine2::ENGINE::keyer;
+
+LRESULT CALLBACK drx::WINDOW::_c(HWND window, UINT msg, WPARAM w, LPARAM l) {
+	LRESULT result = 0;
+	switch (msg) {
+	case WM_KEYDOWN: {
+		//std::cout << "\n> KEY: " << w << ", " << l;
+		switch (w) {
+		default:
+			break;
+		case 65:
+			drx::ENGINE::keyer.a.down = true;
+			break;
+		case 68:
+			drx::ENGINE::keyer.d.down = true;
+			break;
+		case 83:
+			drx::ENGINE::keyer.s.down = true;
+			break;
+		case 87:
+			drx::ENGINE::keyer.w.down = true;
+			break;
+		}
+	} break;
+	case WM_KEYUP: {
+		switch (w) {
+		default:
+			break;
+		case 65: {
+			drx::ENGINE::keyer.a.down = false;
+		} break;
+		case 68: {
+			drx::ENGINE::keyer.d.down = false;
+		} break;
+		case 83: {
+			drx::ENGINE::keyer.s.down = false;
+		} break;
+		case 87: {
+			drx::ENGINE::keyer.w.down = false;
+		} break;
+		case VK_ESCAPE:
+			drx::ENGINE::on = false;
+			break;
+		}
+	} break;
+	case WM_CLOSE:
+	case WM_QUIT:
+	case WM_DESTROY: {
+		drx::ENGINE::on = 0;
+	} break;
+	case WM_SIZE: {
+		RECT rect;
+		GetClientRect(window, &rect);
+		state.w = rect.right - rect.left;
+		state.h = rect.bottom - rect.top;
+		drx::WINDOW::measure = { rect.top, rect.left, state.w, state.h };
+		state._config();
+	} break;
+	case WM_RBUTTONDOWN: {
+		drx::ENGINE::keyer.mouse.right.down = true;
+	} break;
+	case WM_RBUTTONUP: {
+		drx::ENGINE::keyer.mouse.right.down = false;
+
+	} break;
+	case WM_LBUTTONDOWN: {
+		drx::ENGINE::keyer.mouse.left.down = true;
+	} break;
+	case WM_LBUTTONUP: {
+		drx::ENGINE::keyer.mouse.left.down = false;
+		POINT* m = new POINT;
+		if (GetCursorPos(m)) {
+			if (ScreenToClient(drx::WINDOW::handle, m)) {
+				m->x = (m->x < 0) ? (0) : (m->x);
+				m->y = (m->y < 0) ? (0) : (m->y);
+			}
+		}		
+		delete m;
+	} break;
+	case WM_MOUSEWHEEL: {
+		SINT dir = GET_WHEEL_DELTA_WPARAM(w);
+		if (dir == -120) {
+			// down
+			drx::ENGINE::keyer.mouse.up.down = true;
+		}
+		if (dir == 120) {
+			// up
+			drx::ENGINE::keyer.mouse.down.down = true;
+		}
+
+	} break;
+	default: {
+		result = DefWindowProc(window, msg, w, l);
+	} break;
+	}
+	return result;
+}
+
+//SPOT drx::mouse;
+
+MSG drx::WINDOW::msg;
+HWND drx::WINDOW::handle;
+WNDCLASS drx::WINDOW::info;
+DIMENSION drx::WINDOW::measure, drx::WINDOW::client, drx::WINDOW::mouse, drx::WINDOW::mouseLast;
+drx::VERSION drx::ENGINE::version;
+DINT drx::VERSION::lesser, drx::VERSION::minor, drx::VERSION::large, drx::VERSION::major;
+bool drx::ENGINE::on, drx::ENGINE::configured;
+drx::ENGINE::KEYER drx::ENGINE::keyer;
+DINT drx::CONFIGURATION::width, drx::CONFIGURATION::height, drx::CONFIGURATION::scale;
+
+STATISTICS drx::ENGINE::stats;
+std::chrono::system_clock::time_point STATISTICS::nf;
+std::chrono::system_clock::time_point STATISTICS::lf;
+TIME STATISTICS::last, STATISTICS::current;
+double STATISTICS::elapsed;
+std::chrono::high_resolution_clock::time_point STATISTICS::hr;

@@ -1,70 +1,4 @@
 
-struct STATISTICS {
-	STATISTICS() {
-		this->fps = 0;
-		//Engine2::ENGINE::STATISTICS::nf = std::chrono::system_clock::now();
-		//Engine2::ENGINE::STATISTICS::lf = nf - frames{ 1 };
-		//Engine2::ENGINE::STATISTICS::lf = std::chrono::system_clock::now();
-		STATISTICS::nf = std::chrono::system_clock::now();
-		STATISTICS::lf = std::chrono::system_clock::now();
-	};
-
-	DINT fps;
-	COUNTER loops;
-	TIME elapsed;
-	static TIME last;
-	static std::chrono::system_clock::time_point nf, lf;
-
-
-	void _loop() {
-		this->loops.current += 1;
-		this->elapsed._increment(this->elapsed);
-		DINT since = this->elapsed._since();
-		if (this->loops.current > 0 && since > 0) {
-			/*
-			std::cout << "\n> ";
-			std::cout << this->elapsed.lh << ":" << this->elapsed.lm;
-			std::cout << ":" << this->elapsed.ls << ":" << this->elapsed.lms;
-			std::cout << "(" << this->elapsed._since() << ")";
-			*/
-			this->fps = this->loops.current / since;
-		}
-	}
-
-	void _sleep(SINT target = 60) {
-		if (target != -1 && target < 60) {
-			target = 1000 / (target + target / 2);
-			/*
-			std::cout << "\nTime: " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - Engine2::ENGINE::STATISTICS::lf).count() << " ms";
-			std::this_thread::sleep_until(Engine2::ENGINE::STATISTICS::nf);
-			Engine2::ENGINE::STATISTICS::lf = Engine2::ENGINE::STATISTICS::nf;
-			Engine2::ENGINE::STATISTICS::nf += frames {1};
-			*/
-
-			//Engine2::ENGINE::STATISTICS::lf = std::chrono::system_clock::now();
-			STATISTICS::lf = std::chrono::system_clock::now();
-			//std::chrono::duration<double, std::milli> work = Engine2::ENGINE::STATISTICS::lf - Engine2::ENGINE::STATISTICS::nf;
-			std::chrono::duration<double, std::milli> work = STATISTICS::lf - STATISTICS::nf;
-			if (work.count() < target) {
-				std::chrono::duration<double, std::milli> delta_ms(target - work.count());
-				auto delta_duration = std::chrono::duration_cast<std::chrono::milliseconds>(delta_ms);
-				std::this_thread::sleep_for(std::chrono::milliseconds(delta_duration.count()));
-			}
-			//Engine2::ENGINE::STATISTICS::nf = std::chrono::system_clock::now();
-			STATISTICS::nf = std::chrono::system_clock::now();
-			//std::chrono::duration<double, std::milli> sleep = Engine2::ENGINE::STATISTICS::nf - Engine2::ENGINE::STATISTICS::lf;
-			std::chrono::duration<double, std::milli> sleep = STATISTICS::nf - STATISTICS::lf;
-
-			//std::cout << "\nSleep: " << (work.count() + sleep.count()) << " ms";
-			//Engine2::ENGINE::STATISTICS::last.elapsed = (DINT)(work.count() + sleep.count());
-			STATISTICS::last.elapsed = (DINT)(work.count() + sleep.count());
-			//std::cout << "\n" << STATISTICS::last.elapsed;
-
-		}
-	}
-
-};
-
 struct PREFIX {
 	PREFIX(const char name[]) {
 		this->name._write(name);
@@ -83,58 +17,30 @@ struct SUFFIX {
 
 struct CODEX {
 	CODEX() {
-		DICE dice;
-		for (DINT c = 0; c < 5; c++) dice._dbl(-123.123, 0.00456, 0.00001);
+		srand((unsigned int)time(NULL));
 		TIME time;
 		time._clock(0);
 		this->_build();
-		DIRECTORY dir = ENGINE_MAP_DIRECTORY_SPRITE;
-		//dir._dump();
-
-		for (DINT f = 0; f < dir.file.length; f++) {
-			if (dir.file.exist[f]) {
-				DINT sfound = 0;
-				for(DINT s = 0; s < sprite.length; s++){
-					if (dir.file[f]._match(sprite[s].name.text)) {
-						sfound = 1;
-						break;
-					}
-				}
-				if(sfound == 0) sprite << dir.file[f].text;
-				STRING name = dir.file[f].text;
-				this->_animate(dir.file[f]);
-			}
-		}
-
-		/*
-		for (DINT a = 0; a < animation.length; a++) {
-			if (animation[a].sprite[0].name._includes("move")) {
-				MOVE m = animation[a];
-				move << m;
-			}
-		}
-		*/
-		prefix = ENGINE_MAP_PREFIX_POOL;
-		suffix = ENGINE_MAP_SUFFIX_POOL;
-		base = ENGINE_MAP_BASE_POOL;
-
+		sprites = ENGINE_MAP_DIRECTORY_SPRITE;
+		polygons = ENGINE_MAP_DIRECTORY_POLYGON;
 		time._increment(time);
 		std::cout << "\nConstructed CODEX in " << time._since(1) << "ms.";
 	};
 	struct DUMMY {
 		DUMMY() {
-			this->sprite = ENGINE_MAP_SPRITE_DUMMY;
-			this->animation = ENGINE_MAP_ANIMATION_DUMMY;
 			//this->move = this->animation;
 		};
-		SPRITE sprite;
+		SPRITE sprite, tile;
 		ANIMATION animation;
 		//MOVE move;
 	};
 
 	DUMMY dummy;
-	static CHART<SPRITE> sprite;
-	static CHART<ANIMATION> animation;
+	static DIRECTORY sprites, polygons;
+	static IMAP<SPRITE> sprite;
+	static IMAP<ANIMATION> animation;
+	static IMAP<POLYGON> polygon;
+
 	//static CHART<MOVE> move;
 	//static CHART<ABILITY> ability;
 	static CHART<PREFIX> prefix;
@@ -143,22 +49,99 @@ struct CODEX {
 
 	static SINT _search(const char name[]) {
 		for (DINT s = 0; s < sprite.length; s++) {
-			if (sprite.exist[s]) {
+			if (sprite.package[s].exist) {
 				if (sprite[s].name._match(name)) return s;
 			}
 		}
 
+		for (DINT f = 0; f < sprites.file.length; f++) {
+			bool sfound = 0;
+			STRING file = sprites.file[f];
+			if (file._match(name)) {
+				STRING n = file.text;
+				DINT l = 0;
+				if (n._match("sdrx")) {
+					l = 5;
+				}
+				else {
+					l = 4;
+				}
+				n._slice(n.length - l, n.length - 1);
+				if (n._exact(name)) {
+					bool match = file._match(".sdrx");
+					if (match) {
+						SDRX sdrx;
+						sdrx._load(name);
+						sprite << sdrx.sprite;
+					}
+					else {
+					}
+					//_animate(file);
+					return sprite.length - 1;
+				}
+			}
+		}
 		return -1;
 	}
 
 	static SINT _asearch(const char name[]) {
-		STRING n = name;
 		for (DINT a = 0; a < animation.length; a++) {
-			if (animation.exist[a]) {
-				if (n._includes(animation[a]._name())) return a;
+			if (animation.package[a].exist) {
+				STRING n = animation[a]._name();
+				if (n._match(name)) return a;
 			}
 		}
+		
+		SINT sprite = CODEX::_search(name);
+		if (sprite >= 0) {
+			CHART<SPRITE> ss;
+			for (DINT i = 0; i < sprites.file.length; i++) {
+				STRING file = sprites.file[i];
+				if (file._match(name)) {
+					DINT l = 0;
+					if (file._match("sdrx")) {
+						l = 5;
+					}
+					else {
+						l = 4;
+					}
+					file._slice(file.length - l, file.length - 1);
+					sprite = CODEX::_search(file.text);
+					if (sprite >= 0) ss << CODEX::sprite[sprite];
+				}
+			}
+
+			ANIMATION animation = ss;
+			CODEX::animation << animation;
+			ss._close();
+			return CODEX::animation.length - 1;
+		}
 		return -1;
+	}
+
+	static SINT _psearch(const char name[]) {
+		for (DINT s = 0; s < polygon.length; s++) {
+			if (polygon.package[s].exist) {
+				if (polygon[s].name._match(name)) return s;
+			}
+		}
+		for (DINT f = 0; f < polygons.file.length; f++) {
+			bool sfound = 0;
+			STRING file = polygons.file[f];
+			bool match = file._match(".pdrx");
+			if (file._match(name)) {
+				file._slice(file.length - 5, file.length - 1);
+				PDRX pdrx;
+				pdrx._load(file);
+				//POLYGON pol = { file.text, true };
+				polygon << pdrx.polygon;
+				return polygon.length - 1;
+			}
+		}
+
+
+		return -1;
+
 	}
 
 	void _build() {
@@ -166,24 +149,6 @@ struct CODEX {
 		sprite << this->dummy.sprite;
 		animation << this->dummy.animation;
 		//move << this->dummy.move;
-	}
-
-	void _animate(STRING file) {
-		STRING name = file.text;
-		name._slice(' ', '#');
-		SINT anm = this->_asearch(name.text);
-		if(anm != -1){
-			//std::cout << " - Adding to animation";
-			animation[anm].sprite << sprite[this->_search(file.text)];
-		}
-		else {
-			
-			//std::cout << " - No animation, creating one.";
-			ANIMATION a;
-			a = { sprite[this->_search(file.text)] };
-			animation << a;
-
-		}
 	}
 
 	void _dump() {
@@ -214,15 +179,16 @@ struct CODEX {
 
 };
 
-CHART <SPRITE> CODEX::sprite;
-CHART <ANIMATION> CODEX::animation;
-//CHART <MOVE> CODEX::move;
-//CHART <GAME::ABILITY> CODEX::ability;
+IMAP <SPRITE> CODEX::sprite;
+DIRECTORY CODEX::sprites;
+
+IMAP <ANIMATION> CODEX::animation;
+
+IMAP <POLYGON> CODEX::polygon;
+DIRECTORY CODEX::polygons;
+
 CHART <PREFIX> CODEX::prefix;
 CHART <SUFFIX> CODEX::suffix;
 CHART <STRING> CODEX::base;
 
-std::chrono::system_clock::time_point STATISTICS::nf;
-std::chrono::system_clock::time_point STATISTICS::lf;
-TIME STATISTICS::last;
 //CHART<MOVE> LIBRARY::move;

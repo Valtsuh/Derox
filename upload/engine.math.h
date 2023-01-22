@@ -11,6 +11,25 @@ struct MATH {
 		return (-1) * value;
 	}
 
+	static double _min(double a, double b) {
+		return (a < b) ? (a) : (b);
+	}
+
+	static double _max(double a, double b) {
+		return (a > b) ? (a) : (b);
+	}
+
+	static double _pi() {
+		return 3.1415926535;
+	}
+
+	static double _rad(double degree = 90.0) {
+		return degree * (MATH::_pi() / 180.0);
+	}
+
+	static double _deg(double rad = 1.0) {
+		return rad * (180.0 / MATH::_pi());
+	}
 
 	static SINT _gap(SINT value = 0, SINT range = -1) {
 		DICE dice;
@@ -20,6 +39,17 @@ struct MATH {
 		}
 		else {
 			return dice._roll(b, a);
+		}
+	}
+
+	static double _dgap(double value, double range = 2.0) {
+		DICE dice;
+		double a = value - range, b = value + range;
+		if (a < b) {
+			return dice._droll(a, b);
+		}
+		else {
+			return dice._droll(b, a);
 		}
 	}
 
@@ -44,6 +74,111 @@ struct MATH {
 		return val;
 	}
 
+	static double _remainder(double d) {
+		for (; d >= 1.0; d -= 1.0);
+		return d;
+	}
+
+	static double _length(double a, double b) {
+		if (a > b) {
+			double c = b;
+			b = a;
+			a = c;
+		}
+
+		return b - a;
+	}
+
+	static double _posAngle(SPOT a, SPOT b, double degree) {
+		double radius = MATH::_distance(a, b);
+		SPOT c = { a.x + cos(MATH::_rad(degree + 90.0)) * radius, a.y + sin(MATH::_rad(degree + 90.0)) * radius };
+		double rad = atan2(b.y - a.y, b.x - a.x);
+		double deg = MATH::_deg(rad);
+		/*
+		//double rad = atan(slope);
+		double deg = MATH::_dabs(MATH::_deg(rad));
+		double calc = 0.0;
+		if (a.x >= c.x && a.y <= c.y) {
+			// 0 - 90
+			std::cout << "\n 0 ";
+			calc = deg - degree - 90.0;
+		}
+		else if (a.x >= c.x && a.y >= c.y) {
+			// 90 - 180
+			std::cout << "\n 1 ";
+			calc = deg - degree + 270.0;
+		}
+		else if (a.x <= c.x && a.y >= c.y) {
+			// -180 - -90
+			std::cout << "\n 2 ";
+			calc = deg - degree + 180.0;
+		}
+		else if (a.x <= c.x && a.y <= c.y) {
+			// -90 - 0
+			std::cout << "\n 3 ";
+			calc = deg - degree + 90.0;
+		}
+		else {
+			// err
+		}
+
+
+		std::cout << rad << ", " <<  deg << ", " << calc;
+		*/
+
+		return deg;
+	}
+
+	static bool _between(double p, double a, double b) {
+		if (b < a) {
+			double c = b;
+			b = a;
+			a = c;
+		}
+		return a <= p && p <= b;
+	}
+
+	static double _pointAngle(SPOT a, SPOT b, double degree) {
+		double radius = MATH::_distance(a, b);
+		SPOT c = { a.x + cos(MATH::_rad(degree + 90.0)) * radius, a.y + sin(MATH::_rad(degree + 90.0)) * radius };
+		double m = (c.y - b.y) / (c.x - b.x);
+		double rad = atan(m);
+		double deg = MATH::_deg(rad);
+		return deg;
+		
+	}
+	static bool _toLeft(SPOT a, SPOT b, double degree) {
+		double angle = MATH::_posAngle(a, b, degree);
+		angle = (DINT)(angle - degree) % 360;
+		if (MATH::_between(angle, 0.0, 89.0) || MATH::_between(angle, -360.0, -271.0)) {
+			return true;
+		}
+		return false;
+	}
+	static bool _toRight(SPOT a, SPOT b, double degree) {
+		double angle = MATH::_posAngle(a, b ,degree);
+		angle = (DINT)(angle - degree) % 360;
+		if (MATH::_between(angle, 91.0, 180.0) || MATH::_between(angle, -269.0, -160.0)) {
+			return true;
+		}
+		return false;
+	}
+
+	static bool _behind(SPOT a, SPOT b, double degree) {
+		double angle = MATH::_posAngle(a, b, degree);
+		angle = (DINT)(angle - degree) % 360;
+		//std::cout << "\n>" << angle;
+		if (
+			MATH::_between(angle, -90.0, 0.0) || 
+			MATH::_between(angle, -90.0, -180.0) ||
+			MATH::_between(angle, 180.0, 270.0) ||
+			MATH::_between(angle, 270.0, 360.0)
+			) return true;
+		//if (angle > -90.0 && angle > -30.0) return true;
+		//if (angle > -40.0) return true;
+		return false;
+	}
+
 	static void _change(SPOT* s, double x, double y, double z) {
 		s->x += x;
 		s->y += y;
@@ -57,28 +192,166 @@ struct MATH {
 		if (s->z <= -359.0) s->z += 359.0;
 	}
 
-	static void _rotate(SPOT *p, SPOT angle, DINT correction = 1) {		
-
-		if (correction) angle.y += 90.0;
-		SPOT c = { cos(angle.x), cos(angle.y), cos(angle.z) };
-		//SPOT c = { cos(MATH::_rad(angle.x)), cos(MATH::_rad(angle.y)), cos(MATH::_rad(angle.z))};
-		SPOT s = { sin(angle.x), sin(angle.y), sin(angle.z) };
-		//SPOT s = { sin(MATH::_rad(angle.x)), sin(MATH::_rad(angle.y)), sin(MATH::_rad(angle.z)) };
-		//cos._dump();
-		//sin._dump();
-		p->x = p->x * c.x + p->z * s.x;
-		//p->x = p->x * sin.x + p->y * cos.x;
-		p->y = p->y * s.y + p->x * c.y;
-		//p->x = p->x * c.x + p->y * MATH::_polar(s.x);
-
-		//p->y = p->y * cos.y + p->x * sin.y;
-
-		//p->z = p->z * sin.z + p->y * cos.z;
-		//p->y = p->y * MATH::_polar(s.y) + p->z * c.y; 
-		
-		//p->z = p->z * s.z + p->x * c.z;
-		//p->z = p->z * c.z + p->y * s.z;
+	static SPOT _transform2D(SPOT p, SPOT angle, bool rad = false) {
+		for (; angle.x >= 360.0; angle.x -= 360.0);
+		SPOT n;
+		double c, s;
+		if (rad) {
+			c = cos(MATH::_rad(angle.x)); 
+			s = sin(MATH::_rad(angle.x));
+		}
+		else {
+			c = cos(angle.x);
+			s = sin(angle.x);
+		}
+		n.x = p.x * c - p.y * s;
+		n.y = p.x * s + p.y * c;
+		return n;
 	}
+
+	static SPOT _transform3D(SPOT p, SPOT angle, bool rad = false) {
+		SPOT c, s;
+		if (rad) {
+			c = { cos(MATH::_rad(angle.x)), cos(MATH::_rad(angle.y)), cos(MATH::_rad(angle.z)) };
+			s = { sin(MATH::_rad(angle.x)), sin(MATH::_rad(angle.y)), sin(MATH::_rad(angle.z)) };
+		}
+		else {
+			c = { cos(angle.x), cos(angle.y), cos(angle.z) };
+			s = { sin(angle.x), sin(angle.y), sin(angle.z) };
+		}
+		SPOT n; // = MATH::_transform2D(p, angle);
+
+		n.y = p.y * c.x - p.z * s.x;
+		n.z = p.y * s.x + p.z * c.x;
+
+		n.x = p.x * c.y + n.z * s.y;
+		n.z = p.x * s.y - n.z * c.y;
+
+		//n.y = n.y * c.z + p.x * s.z;
+		//n.x = p.y * s.z - n.x * c.z;
+
+		
+		return n;
+
+	}
+
+	static void _makePoint(IMAP<SPOT> spots, SSPOT *p) {
+		for (DINT i = 0; i < spots.length; i++) {
+			SPOT s = spots[i];
+			if (s.x < p->x) p->x = s.x;
+			if (s.x > p->w) p->w = s.x;
+			if (s.y < p->y) p->y = s.y;
+			if (s.y > p->h) p->h = s.y;
+			if (s.z < p->z) p->z = s.z;
+			if (s.z > p->d) p->d = s.z;
+		}
+	}
+	
+	static void _intersect(SPOT a, SPOT b, SSPOT *scan) {
+		double slope = UTILS::_slope(a.x, b.x, a.y, b.y);
+		if (b.x > a.x) slope = MATH::_dpolar(slope);
+	}
+
+	static double _distance(SPOT a, SPOT b) {
+		double x = a.x - b.x;
+		double y = a.y - b.y;
+		return (MATH::_dabs(x) + MATH::_dabs(y));
+
+	}
+
+	static bool _spotInTriangle(SPOT p, IMAP<SPOT> spots) {
+		if (spots.length == 0) return false;
+		SSPOT e = true;
+		MATH::_makePoint(spots, &e);
+		if (p.x < e.x || p.x > e.w || p.y < e.y || p.y > e.h) return false;
+
+		bool inside = false;
+
+		for (DINT i = 0; i < spots.length; i++) {
+			SPOT a = spots[i];
+			SPOT b = spots[(i + 1) % spots.length];
+
+			//bool ba = (a.y > p.y) != (b.y > p.y);
+			//bool bb = (p.x < (b.x - a.x)* (p.y - a.y) / (b.y - p.y) + a.x);
+			
+			//if(ba && bb) inside = !inside;
+
+			if (
+				(a.y > p.y) != (b.y > p.y) &&
+				(p.x < (b.x - a.x) * (p.y - a.y) / (b.y - a.y) + a.x)
+				) inside = !inside;
+		}
+
+		return inside;
+	}
+
+	static bool _spotInDegree(SPOT p, IMAP<SPOT> spots) {
+
+		double degree = 0.0;
+		for (DINT i = 0; i < spots.length; i++) {
+			SPOT a = spots[i];
+			SPOT b = spots[(i + 1) % spots.length];
+			/*
+			if(i != spots.length){
+				a = spots[i];
+				b = spots[i + 1];
+			}
+			else {
+				a = spots[i];
+				b = spots[0];
+			}
+			*/
+
+			double da = MATH::_distance(a, b);
+			double db = MATH::_distance(p, a);
+			double dc = MATH::_distance(p, b);
+
+			SPOT dira, dirb;
+			dira = { a.x - p.x, a.y - p.y };
+			dirb = { b.x - p.x, b.y - p.y };
+
+			double cross = dirb.y * dira.x - dirb.x * dira.y;
+			bool clockwise = cross < 0.0;
+			double m = cos((db * db + dc * dc - da * da) / (2.0 * db * dc));
+			if (clockwise) {
+				degree += MATH::_deg(m);
+			}
+			else {
+				degree -= MATH::_deg(m);
+			}
+		}
+		if (MATH::_dabs(round(degree) - 360.0) <= 3.0) return true;
+
+		return false;
+
+	}
+
+	static bool _onLineExact(SPOT a, SPOT b, SPOT p) {
+
+		if (a.x > b.x) {
+			SPOT c = { a.x, a.y };
+			a = { b.x, b.y };
+			b = { c.x, c.y };
+		}
+		//if (a.x == p.x || a.y == p.y && b.x == p.x || b.y == p.y) return true;
+		//if (a.x == p.x) return b.x == p.x;
+		//if (a.y == p.y) return b.y == p.y;
+		return (a.x - p.x) * (a.y - p.y) == (p.x - b.x) * (p.y - b.y);
+
+	}
+
+	static bool _inArea(SPOT a, SPOT b, SPOT p) {
+		bool x = false, y = false;
+		if (a.x < b.x && p.x >= a.x && p.x <= b.x ||
+			a.x > b.x && p.x <= a.x && p.x >= b.x
+			) x = true;
+		if (
+			a.y < b.y && p.y >= a.y && p.y <= b.y ||
+			a.y > b.y && p.y <= a.y && p.y >= b.y
+			) y = true;
+		return x && y;
+	}
+
 	static void _spec(SPOT *p, double angle) {
 
 		//std::cout << "\n" << p->x << ", " << p->y << ", " << p->z;
@@ -95,8 +368,8 @@ struct MATH {
 		return val;
 	}
 
-	static DINT _tnth(DINT a, DINT th) {
-		DINT value = a;
+	static SLINT _tnth(DINT a, DINT th) {
+		SLINT value = a;
 		do {
 			value *= 10;
 			th--;
@@ -126,9 +399,6 @@ struct MATH {
 		return value;
 	}
 
-	static double _pi() {
-		return 3.1415926535;
-	}
 
 	static DINT _sq(DINT number = 1) {
 		return number * number;
@@ -143,81 +413,6 @@ struct MATH {
 		}
 	}
 
-	template <typename a, DINT s>
-	static SINT _min(a (&values)[s]) {
-		SINT value = values[0];
-		for (DINT i = 0; i < s; i++) {
-			value = (values[i] < value) ? (values[i]) : (value);
-		}
-
-		return value;
-	}
-
-	template <typename a, DINT s>
-	static SINT _max(a (&values)[s]) {
-
-		SINT value = values[0];
-		for (DINT i = 0; i < s; i++) {
-			value = (values[i] > value) ? (values[i]) : (value);
-		}
-		return value;
-	}
-
-	static SINT _imax(INDEX<SINT> index) {
-		SINT first = index._first();
-		SINT value;
-		if (first >= 0) {
-			value = index.item[first];
-
-			for (DINT i = first; i < index.size; i++) {
-				if (index.exist[i]) value = (index.item[i] > value) ? (index.item[i]) : (value);
-			}
-		}
-		else {
-			value = 0;
-		}
-		return value;
-	}
-
-	static DINT _cmatch(DINT number, CHART<DINT> index) {
-		for (DINT i = 0; i < index.length; i++) {
-			if (index.exist[i] && index[i] == number) return 1;
-		}
-		return 0;
-	}
-
-	static SINT _cmax(CHART<SINT> index) {
-		SINT first = index._first();
-		SINT value = index[first];
-
-		for (DINT i = first; i < index.size; i++) {
-			if (index.exist[i]) value = (index[i] > value) ? (index[i]) : (value);
-		}
-		return value;
-	}
-
-	static SINT _imin(INDEX<SINT> index) {
-		DINT first = index._first();
-		SINT value = index.item[first];
-
-		for (DINT i = first; i < index.size; i++) {
-			if (index.exist[i]) value = (index.item[i] < value) ? (index.item[i]) : (value);
-		}
-		return value;
-	}
-
-	static SINT _cmin(CHART<SINT> index) {
-		SINT first = index._first();
-		SINT value = index[first];
-		for (DINT i = first; i < index.size; i++) {
-			if (index.exist[i]) value = (index[i] < value) ? (index[i]) : (value);
-		}
-		return value;
-	}
-
-	static double _rad(double degree = 90.0) {
-		return degree * (MATH::_pi() / 180.0);
-	}
 
 	static double _length(SPOT a, SPOT b) {
 		double x = MATH::_dabs(a.x - b.x);

@@ -4,10 +4,11 @@ typedef long int LINT;
 typedef long long int SLINT;
 typedef long double LBLE;
 
+enum class DIR { ASC = 1, DESC = -1 };
 
 #define ENGINE_DATABASE_LIST_LENGTH_MAX 128
 #define ENGINE_DATABASE_INDEX_BLOCK_SIZE 8
-#define ENGINE_TEXT_MAX_LENGTH 64
+#define ENGINE_TEXT_MAX_LENGTH 96
 #define ENGINE_DRAW	101
 #include <time.h>
 #include <chrono>
@@ -26,6 +27,9 @@ struct UTILS {
 		DINT value;
 
 	};
+	struct MATRIX {
+		double m[4][4] = { 0 };
+	};
 	static char _ntc(DINT num) {
 		if (num == 0) return '0';
 		if (num == 1) return '1';
@@ -38,6 +42,19 @@ struct UTILS {
 		if (num == 8) return '8';
 		if (num == 9) return '9';
 		return '?';
+	}
+	static DINT _ctn(char num) {
+		if (num == '0') return 0;
+		if (num == '1') return 1;
+		if (num == '2') return 2;
+		if (num == '3') return 3;
+		if (num == '4') return 4;
+		if (num == '5') return 5;
+		if (num == '6') return 6;
+		if (num == '7') return 7;
+		if (num == '8') return 8;
+		if (num == '9') return 9;
+		return 0;
 	}
 	static SINT _isnum(const char character) {
 		if (character == '0') return 0;
@@ -54,17 +71,14 @@ struct UTILS {
 
 	}
 
-	static DINT _tnth(DINT a, DINT th) {
-		DINT value = a;
-		do {
-			value *= 10;
-			th--;
-		} while (th > 0);
+	static SLINT _tnth(DINT a, DINT th) {
+		SLINT value = a;
+		for (; th > 0; th--) value *= 10;
 		return value;
 	}
 
 
-	static SINT _abs(SINT value = -1) {
+	static SLINT _abs(SLINT value = -1) {
 		if (value < 0) {
 			value = (-1) * value;
 		}
@@ -72,15 +86,17 @@ struct UTILS {
 	}
 	static double _slope(double ax, double bx, double ay, double by) {
 		if (ax != bx) {
-			double slope = (by - ay) / (bx - ax);
-			return slope;
+			return (by - ay) / (bx - ax);
 		}
 		else {
 			return 0.0;
 		}
 	}
+
 	static float _distance(SINT ax, SINT ay, SINT bx, SINT by) {
-		return (float)(UTILS::_abs(ax - bx) + UTILS::_abs(ay - by));
+		SLINT x = (SLINT)ax - (SLINT)bx;
+		SLINT y = (SLINT)ay - (SLINT)by;
+		return (float)(UTILS::_abs(x) + UTILS::_abs(y));
 	}
 
 	static float _heuristic(SINT ax, SINT ay, SINT bx, SINT by) {
@@ -97,6 +113,7 @@ struct UTILS {
 		return 5;
 
 	}
+	
 };
 struct BINT {
 	BINT(DINT value = 0) {
@@ -123,10 +140,10 @@ struct BINT {
 };
 
 struct DUAL {
-	SINT i;
+	SLINT i;
 	double d;
 
-	operator SINT() const {
+	operator SLINT() const {
 		return this->i;
 	}
 };
@@ -171,284 +188,7 @@ struct COUNTER {
 		return (this->current >= this->total) ? (1) : (0);
 	}
 };
-struct TIME {
-	TIME() {
-		this->year = 0;
-		this->month = 0;
-		this->day = 0;
-		this->hour = 0;
-		this->minute = 0;
-		this->second = 0;
-		this->millisecond = 0;
-		this->microsecond = 0;
-		this->nanosecond = 0;
-		this->success = 0;
-		this->precision = 0;
-		this->count = 0;
-		this->system = {};
-		this->difference = 0;
-		this->elapsed = 0;
-		this->lh = 0;
-		this->lm = 0;
-		this->ls = 0;
-		this->lms = 0;
-	};
-	~TIME() {
-		this->year = 0;
-		this->month = 0;
-		this->day = 0;
-		this->hour = 0;
-		this->minute = 0;
-		this->second = 0;
-		this->millisecond = 0;
-		this->microsecond = 0;
-		this->nanosecond = 0;
-		this->count = 0;
-		this->elapsed = 0;
-		this->difference = 0;
-	};
-	DINT year, month, day, hour, minute, second, success, precision, elapsed, difference;
-	DINT millisecond, microsecond, nanosecond;
-	LINT count;
-	SYSTEMTIME system;
-	DINT lh, lm, ls, lms;
 
-	void _clock(DINT type = 1) {
-		this->_reset();
-		switch (type) {
-		default:
-			GetLocalTime(&this->system);
-			this->month = this->system.wMonth;
-			this->day = this->system.wDay;
-			this->hour = this->system.wHour;
-			this->minute = this->system.wMinute;
-			this->second = this->system.wSecond;
-			this->millisecond = this->system.wMilliseconds;
-			this->microsecond = 0;
-			this->nanosecond = 0;
-			break;
-		case 1:
-			//std::chrono::time_point<std::chrono::system_clock> tp = std::chrono::system_clock::now();
-			std::chrono::steady_clock::time_point tp = std::chrono::high_resolution_clock::now();
-			auto duration = tp.time_since_epoch();
-			typedef std::chrono::duration<int, std::ratio_multiply<std::chrono::hours::period, std::ratio<2>>::type> Days;
-
-			Days days = std::chrono::duration_cast<Days>(duration);
-			this->day = (DINT)days.count();
-			duration -= days;
-
-			auto hours = std::chrono::duration_cast<std::chrono::hours>(duration);
-			this->hour = (DINT)hours.count(); // +13;
-			duration -= hours;
-
-			auto minutes = std::chrono::duration_cast<std::chrono::minutes>(duration);
-			duration -= minutes;
-			this->minute = (DINT)minutes.count();
-
-			auto seconds = std::chrono::duration_cast<std::chrono::seconds>(duration);
-			duration -= seconds;
-			this->second = (DINT)seconds.count();
-
-			auto mss = std::chrono::duration_cast<std::chrono::milliseconds>(duration);
-			duration -= mss;
-			this->millisecond = (DINT)mss.count();
-
-			auto uss = std::chrono::duration_cast<std::chrono::microseconds>(duration);
-			duration -= uss;
-			this->microsecond = (DINT)uss.count();
-
-			auto nss = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
-			this->nanosecond = (DINT)nss.count();
-			break;
-		}
-		DINT view = 0;
-		if (view) {
-			std::cout << "\nYear: " << this->year;
-			std::cout << "\nMonth: " << this->month;
-			std::cout << "\nDay: " << this->day;
-			std::cout << "\nHour: " << this->hour;
-			std::cout << "\nMinute: " << this->minute;
-			std::cout << "\nSecond: " << this->second;
-			std::cout << "\nMs: " << this->millisecond;
-			std::cout << "\nMcrs: " << this->microsecond;
-			std::cout << "\nNs: " << this->nanosecond;
-		}
-	}
-
-	DINT _duration(TIME time, DINT ms = 0, DINT type = 0) {
-		this->count = 0;
-		this->_clock(type);
-		this->hour = (this->hour > time.hour) ? ((this->hour == 0) ? (11) : (0)) : (this->hour);
-		//this->count += (LINT)this->year * 12 * 30 * 24 * 60 * 60 * 1000;
-		//this->count += (LINT)this->month * 30 * 24 * 60 * 60 * 1000;
-		//this->count += (LINT)this->day * 24 * 60 * 60 * 1000;
-		//this->count += (LINT)this->hour * 60 * 60 * 1000;
-		this->count += (LINT)this->minute * 60 * 1000;
-		this->count += (LINT)this->second * 1000;
-		this->count += (LINT)this->millisecond;
-		time.hour = (time.hour > this->hour) ? ((time.hour == 0) ? (11) : (0)) : (time.hour);
-		//time.count += (LINT)time.year * 12 * 30 * 24 * 60 * 60 * 1000;
-		//time.count += (LINT)time.month * 30 * 24 * 60 * 60 * 1000;
-		//time.count += (LINT)time.day * 24 * 60 * 60 * 1000;
-		//time.count += (LINT)time.hour * 60 * 60 * 1000;
-		time.count += (LINT)time.minute * 60 * 1000;
-		time.count += (LINT)time.second * 1000;
-		time.count += (LINT)time.millisecond;
-		switch (ms) {
-		default:
-			this->elapsed = (DINT)((this->count - time.count) / 1000);
-			break;
-		case 1:
-			this->elapsed = (DINT)(this->count - time.count);
-			break;
-		}
-		return this->elapsed;
-	}
-	void _increment(TIME time) {
-		this->_clock(0);
-		this->count += (LINT)this->hour * 60 * 60 * 1000;
-		this->count += (LINT)this->minute * 60 * 1000;
-		this->count += (LINT)this->second * 1000;
-		this->count += (LINT)this->millisecond;
-		time.count += (LINT)time.hour * 60 * 60 * 1000;
-		time.count += (LINT)time.minute * 60 * 1000;
-		time.count += (LINT)time.second * 1000;
-		time.count += (LINT)time.millisecond;
-		this->lms += (this->count > time.count) ? ((DINT)(this->count - time.count)) : ((DINT)(time.count - this->count));
-		for (; this->lms > 999; this->lms -= 1000) {
-			this->ls += 1;
-		}
-		for (; this->ls > 59; this->ls -= 60) {
-			this->lm += 1;
-		}
-		for (; this->lm > 59; this->lm -= 60) {
-			this->lh += 1;
-		}
-		this->count = 0;
-
-	}
-	void _reset() {
-		this->count = 0;
-		this->difference = 0;
-		this->year = 0;
-		this->month = 0;
-		this->day = 0;
-		this->hour = 0;
-		this->minute = 0;
-		this->second = 0;
-		this->millisecond = 0;
-		this->microsecond = 0;
-		this->nanosecond = 0;
-		/*
-		this->count = 0;
-		this->lh = 0;
-		this->lms = 0;
-		this->lm = 0;
-		this->ls = 0;
-		*/
-	}
-	
-	void _difference() {
-
-	}
-
-	DINT _since(DINT ms = 0) {
-		DINT count = 0;
-		//std::cout << " - " << this->lh << ":" << this->lm << ":" << this->ls;
-		count += this->lh * 60 * 60 * ((ms) ? (1000) : (1));
-		count += this->lm * 60 * ((ms) ? (1000) : (1));
-		count += this->ls * ((ms) ? (1000) : (1));
-		count += (ms) ? (this->lms) : (0);
-		return count;
-	}
-};
-
-struct DICE {
-	DICE() {
-		this->seed.i = 0;
-		this->seed.d = 0.0;
-		this->value.i = 0;
-		this->seed.d = 0.0;
-
-	};
-
-	DUAL seed, value;
-	TIME time;
-	operator DICE() const {
-		return *this;
-	}
-	SINT _roll(SINT min, SINT max) {
-		this->time._clock();
-		this->seed.i = (this->time.microsecond) % (max + 1 - min); // 0 - 9
-		this->value.i = this->seed.i + min;
-		this->value.i = (this->value.i > max) ? (max) : (this->value.i);
-		//std::cout << "\nSeed: " << this->seed.i << ", Value: " << this->value.i << " (" << min << ", " << max << ")";
-		return this->value.i;
-	}
-
-	double _droll(double min, double max, double accuracy = 0.01) {
-		this->time._clock();
-		if (min > max) {
-			double tmin = min;
-			min = max;
-			max = tmin;
-		}
-		double addition = 0.0;
-		SINT cmin = 0, cmax = 0;
-		DINT hcount = 0;
-
-		double nmin = min;
-		double nmax = max;
-		do {
-			nmin += 1.0;
-			addition += 1.0;
-		} while (nmin < 0.0);
-
-		do {
-			nmin *= 10.0;
-			cmax++;
-		} while (min / nmin >= accuracy);
-		SINT dmin = (SINT)nmin;
-		nmax += addition;
-		do {
-			nmax *= 10.0;
-			cmin++;
-		} while (max / nmax >= accuracy);
-		SINT dmax = (SINT)nmax;
-		SLINT value = 1;
-		hcount = (cmin > cmax) ? (cmin) : (cmax);
-		for (DINT c = 0; c < hcount; c++) {
-			value *= (SLINT)((this->time.millisecond * 12) + 9999999);
-		}
-		this->seed.i = ((SLINT)(this->time.microsecond * value)) % (dmax + 1 - dmin);
-		this->value.i = this->seed.i + dmin;
-		this->value.d = (double)this->value.i;
-		//this->value.d -= addition;
-		for (DINT c = 0; c <= hcount; c++) {
-			this->value.d /= 10.0;
-		}
-		if(this->value.d > 0){
-			this->value.d -= max;
-		}
-		else {
-			this->value.d += max;
-		}
-		if (this->value.d < min) this->value.d = min;
-		if (this->value.d > max) this->value.d = max;
-		//if (this->value.d <  min) this->value.d = min;
-		//std::cout << "\nDouble roll: " << this->value.d << " (" << min << ", " << max << ")";
-		return this->value.d;
-
-	}
-
-	double _dbl(double min, double max, double accuracy = 0.01) {
-		this->time._clock();
-		double cmin = min, cmax = max;
-		double val = min;
-		return val;
-	}
-
-};
 struct RANDOM {
 	RANDOM() {
 		this->min = 0;
@@ -583,7 +323,8 @@ struct POS {
 		this->checked = 0;
 		this->total = 0;
 	}
-	SINT x, y, w, h, blocked, checked, total;	
+	SINT x, y, w, h, checked, total;
+	bool blocked;
 	void _dump() {
 		std::cout << "\nPOS: " << this->x << ", " << this->y;
 	}
@@ -598,27 +339,149 @@ struct POS {
 		return 0;
 	}
 
+	DINT _direction(POS next) {
+		DINT dir = 5;
+		if (this->x < next.x && this->y == next.y) dir = 6;
+		if (this->x > next.x && this->y == next.y) dir = 4;
+		if (this->x == next.x && this->y < next.y) dir = 2;
+		if (this->x == next.x && this->y > next.y) dir = 8;
+		//std::cout << "\n Dir: " << dir;
+		return dir;
+	}
 
 };
 struct SPOT {
-	SPOT(double x = 0.0, double y = 0.0, double z = 0.0) {
+	struct COLOR {
+		COLOR(DINT r, DINT g, DINT b) {
+			this->r = r;
+			this->g = g;
+			this->b = b;
+		};
+		COLOR() {};
+		DINT r, g, b;
+	};
+	SPOT(double x = 0.0, double y = 0.0, double z = 0.0, COLOR color = {0, 0, 0}) {
 		this->x = x;
 		this->y = y;
 		this->z = z;
+		this->color = color;
+		this->locked = false;
+		this->max = 0.0;
+		this->min = 0.0;
 	};
 	~SPOT() {};
-	double x, y, z;	
+	double x, y, z, min, max;
+	bool locked;
+	COLOR color;
 
+	bool operator == (SPOT b) {
+		if (this->x == b.x && this->y == b.y && this->z == b.z) return true;
+		return false;
+	}
 
 	void _dump() {
 		std::cout << "\n> X " << this->x << ", Y " << this->y << ", Z " << this->z;
+		std::cout << " ( " << this->color.r << ", " << this->color.g << ", " << this->color.b << " )";
 	}
 
 	POS _pos() {
 		return { (SINT)this->x, (SINT)this->y };
 	}
+
+	bool _round(double r, SPOT c) {
+		double x = this->x - r;
+		double y = this->y - r;
+		double w = this->x + r;
+		double h = this->y + r;
+
+		return (x <= c.x && w >= c.x && y <= c.y && h >= c.y);
+	}
+
+};
+struct SSPOT : SPOT {
+	SSPOT(double x = 0.0, double y = 0.0, double w = 0.0, double h = 0.0, double z = 0.0, double d = 0.0) {
+		this->x = x;
+		this->y = y;
+		this->w = w;
+		this->h = h;
+		this->z = z;
+		this->d = d;
+	};
+	SSPOT(bool inf) {
+		if (inf) {
+			this->x = INFINITY;
+			this->y = INFINITY;
+			this->z = INFINITY;
+			this->w = -INFINITY;
+			this->h = -INFINITY;
+			this->d = -INFINITY;
+		}
+		else {
+			this->x = 0.0;
+			this->y = 0.0;
+			this->z = 0.0;
+			this->w = 0.0;
+			this->h = 0.0;
+			this->d = 0.0;
+		}
+	};
+	double w, h, d;
+
+
+	void _dump() {
+		std::cout << "\nSSPOT: " << this->x << " (" << this->w << "), " << this->y << " (" << this->h << "), " << this->z << " (" << this->d <<")";
+	}
 };
 
+struct DICE {
+	DICE() {
+		this->seed.i = 0;
+		this->seed.d = 0.0;
+		this->value.i = 0;
+		this->seed.d = 0.0;
+
+	};
+
+	DUAL seed, value;
+	//TIME time;
+	operator DICE() const {
+		return *this;
+	}
+	SINT _roll(SINT min, SINT max) {
+		/*
+		this->time._clock();
+		this->seed.i = (this->time.microsecond) % (max + 1 - min); // 0 - 9
+		this->value.i = this->seed.i + min;
+		this->value.i = (this->value.i > max) ? (max) : (this->value.i);
+		//std::cout << "\nSeed: " << this->seed.i << ", Value: " << this->value.i << " (" << min << ", " << max << ")";
+		return (SINT)this->value.i;
+		*/
+		max++;
+		DINT c = 0;
+		do {
+			min++;
+			max++;
+			c++;
+		} while (min < 0);
+		double r = (double)min + ((double)rand() / (double)RAND_MAX) * (double(max) - (double)min);
+		SINT result = (SINT)r - 1 * c;
+		return result;
+	}
+
+	double _droll(double min, double max) {
+		return min + (((double)rand() / (double)RAND_MAX) * (max - min));
+	}
+
+	DINT _percent(DINT number, DINT percent = 100) {
+		if ((rand() % percent) < number) {
+			return 1;
+		}
+		else {
+			return 0;
+		}
+	}
+
+};
 struct STRING {
 	STRING() {
 		this->length = 0;
@@ -643,61 +506,82 @@ struct STRING {
 	wchar_t wtext[ENGINE_TEXT_MAX_LENGTH];
 	char text[ENGINE_TEXT_MAX_LENGTH];
 	unsigned char utext[ENGINE_TEXT_MAX_LENGTH];
+	DICE dice;
 
 	void operator += (const char text[]) {
 		this->_append(text);
 	}
 
-	DICE dice;
-
-	DINT _match(const char text[]) {
-		STRING t = text;
-		if (t.length != this->length) return 0;
-		for (DINT i = 0; text[i] != '\0'; i++) {
-			if (this->text[i] != text[i]) {
-				return 0;
-			}
-		}
-		return 1;
+	void operator << (const char chr) {
+		this->text[this->length] = chr;
+		this->length++;
 	}
 
-	void _slice(char a, char b) {
-		STRING string;
-		DINT found = 0;
-		for (this->length = 0; this->text[this->length] != '\0'; this->length++) {
-			if (a != ' ') {
-				if (this->text[this->length] == a && found == 0) {
-					found = 1;
-					this->length++;
-				}
-			}
-			else {
-				if (found != 1) found = 1;
-			}
-			if (found) {
-				string._app(this->text[this->length]);
-			}
-			if(b == '#'){
-				DINT n = 0;
-				for (DINT i = 0; i < 10; i++) {
-					if (UTILS::_ntc(i) == this->text[this->length]) {
-						string.text[string.length - 1] = '\0';
-						n = 1;
-						break;
-					}
-				}
-				if (n) break;
-			}
-			else {
-				if (this->text[this->length] == b) {
-					string.text[string.length - 1] = '\0';
-					break;
-				}
-			}
-
-		}
-		this->_write(string.text);
+	operator STRING() {
+		return this->text;
 	}
+
+	char operator[] (DINT position) {
+		return this->text[position];
+	}
+
+
+	bool _match(const char text[]) {
+		DINT t = 0;
+		STRING n = text;
+		for (DINT c = 0; c < this->text[c] != '\0'; c++) {
+			char cursor = this->text[c];
+			if (cursor != text[t]) {
+				t = 0;
+			}
+			else {
+				t++;
+			}
+			if (t == n.length) return true;
+		}
+		return false;
+	}
+
+	bool _exact(const char text[]) {
+		for (DINT c = 0; c < this->text[c] != '\0'; c++) {
+			char cursor = this->text[c];
+			if (cursor != text[c]) return false;
+		}
+		return true;
+	}
+
+	void _slice(DINT b, DINT e) {
+		STRING sliced;
+		for (DINT c = 0; this->text[c] != '\0'; c++) {
+			char cursor = this->text[c];
+			if (c < b) sliced._app(cursor);
+			if (c > e) sliced._app(cursor);
+		}
+		this->_write(sliced.text);
+	}
+
+	bool _strip(char a, char b) {
+		STRING stripped;
+		bool bFound = false, eFound = false;
+		for (DINT c = 0; this->text[c] != '\0'; c++) {
+			char cursor = this->text[c];
+			//std::cout << cursor;
+			if (eFound) {
+				stripped._app(cursor);
+			}
+			else {
+				if (!bFound) {
+					if (cursor == a) bFound = true;
+				}
+				else {
+					if (cursor == b) eFound = true;
+				}
+			}
+		}
+		if(eFound) this->_write(stripped.text);
+		return eFound;
+	}
+
 
 	void _replace(char a, char b) {
 		for (DINT c = 0; c < this->length; c++) {
@@ -710,23 +594,6 @@ struct STRING {
 			if (this->text[c] == a) return 1;
 		}
 		return 0;
-	}
-
-	DINT _includes(const char text[]) {
-		DINT match = 0;
-		for (DINT i = 0; i < this->length; i++) {
-			if (this->text[i] == text[0]) {
-				match = 1;
-				for (DINT t = 1; text[t] != '\0'; t++) {
-					if (text[t] != this->text[i + t]) {
-						match = 0;
-						break;
-					}
-				}
-				if (match) break;
-			}
-		}
-		return match;
 	}
 
 	void _generate(DINT length = 5) {
@@ -856,8 +723,236 @@ struct STRING {
 		this->text[this->length] = '\0';
 	}
 
+	void _prev() {
+		if(this->length > 0) this->text[this->length - 1] = '\0';
+		if(this->length > 0) this->length--;
+	}
+
 	void _dump() {
-		std::cout << "\n>" << this->text;
+		std::cout << "\n>STRING: " << this->text;
+	}
+};
+
+struct TIME {
+	TIME() {
+		this->year = 0;
+		this->month = 0;
+		this->day = 0;
+		this->hour = 0;
+		this->minute = 0;
+		this->second = 0;
+		this->millisecond = 0;
+		this->microsecond = 0;
+		this->nanosecond = 0;
+		this->success = 0;
+		this->precision = 0;
+		this->count = 0;
+		this->system = {};
+		this->difference = 0;
+		this->elapsed = 0;
+		this->lh = 0;
+		this->lm = 0;
+		this->ls = 0;
+		this->lms = 0;
+	};
+	~TIME() {
+		this->year = 0;
+		this->month = 0;
+		this->day = 0;
+		this->hour = 0;
+		this->minute = 0;
+		this->second = 0;
+		this->millisecond = 0;
+		this->microsecond = 0;
+		this->nanosecond = 0;
+		this->count = 0;
+		this->elapsed = 0;
+		this->difference = 0;
+	};
+	DINT year, month, day, hour, minute, second, success, precision, elapsed, difference;
+	DINT millisecond, microsecond, nanosecond;
+	LINT count;
+	SYSTEMTIME system;
+	DINT lh, lm, ls, lms;
+
+	void _clock(DINT type = 1) {
+		this->_reset();
+		switch (type) {
+		default:
+			GetLocalTime(&this->system);
+			this->month = this->system.wMonth;
+			this->day = this->system.wDay;
+			this->hour = this->system.wHour;
+			this->minute = this->system.wMinute;
+			this->second = this->system.wSecond;
+			this->millisecond = this->system.wMilliseconds;
+			this->microsecond = 0;
+			this->nanosecond = 0;
+			break;
+		case 1:
+			//std::chrono::time_point<std::chrono::system_clock> tp = std::chrono::system_clock::now();
+			std::chrono::steady_clock::time_point tp = std::chrono::high_resolution_clock::now();
+			auto duration = tp.time_since_epoch();
+			typedef std::chrono::duration<int, std::ratio_multiply<std::chrono::hours::period, std::ratio<2>>::type> Days;
+
+			Days days = std::chrono::duration_cast<Days>(duration);
+			this->day = (DINT)days.count();
+			duration -= days;
+
+			auto hours = std::chrono::duration_cast<std::chrono::hours>(duration);
+			this->hour = (DINT)hours.count(); // +13;
+			duration -= hours;
+
+			auto minutes = std::chrono::duration_cast<std::chrono::minutes>(duration);
+			duration -= minutes;
+			this->minute = (DINT)minutes.count();
+
+			auto seconds = std::chrono::duration_cast<std::chrono::seconds>(duration);
+			duration -= seconds;
+			this->second = (DINT)seconds.count();
+
+			auto mss = std::chrono::duration_cast<std::chrono::milliseconds>(duration);
+			duration -= mss;
+			this->millisecond = (DINT)mss.count();
+
+			auto uss = std::chrono::duration_cast<std::chrono::microseconds>(duration);
+			duration -= uss;
+			this->microsecond = (DINT)uss.count();
+
+			auto nss = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+			this->nanosecond = (DINT)nss.count();
+			break;
+		}
+		DINT view = 0;
+		if (view) {
+			std::cout << "\nYear: " << this->year;
+			std::cout << "\nMonth: " << this->month;
+			std::cout << "\nDay: " << this->day;
+			std::cout << "\nHour: " << this->hour;
+			std::cout << "\nMinute: " << this->minute;
+			std::cout << "\nSecond: " << this->second;
+			std::cout << "\nMs: " << this->millisecond;
+			std::cout << "\nMcrs: " << this->microsecond;
+			std::cout << "\nNs: " << this->nanosecond;
+		}
+	}
+
+	DINT _duration(TIME time, DINT ms = 0, DINT type = 0) {
+		this->count = 0;
+		this->_clock(type);
+		this->hour = (this->hour > time.hour) ? ((this->hour == 0) ? (11) : (0)) : (this->hour);
+		//this->count += (LINT)this->year * 12 * 30 * 24 * 60 * 60 * 1000;
+		//this->count += (LINT)this->month * 30 * 24 * 60 * 60 * 1000;
+		//this->count += (LINT)this->day * 24 * 60 * 60 * 1000;
+		//this->count += (LINT)this->hour * 60 * 60 * 1000;
+		this->count += (LINT)this->minute * 60 * 1000;
+		this->count += (LINT)this->second * 1000;
+		this->count += (LINT)this->millisecond;
+		time.hour = (time.hour > this->hour) ? ((time.hour == 0) ? (11) : (0)) : (time.hour);
+		//time.count += (LINT)time.year * 12 * 30 * 24 * 60 * 60 * 1000;
+		//time.count += (LINT)time.month * 30 * 24 * 60 * 60 * 1000;
+		//time.count += (LINT)time.day * 24 * 60 * 60 * 1000;
+		//time.count += (LINT)time.hour * 60 * 60 * 1000;
+		time.count += (LINT)time.minute * 60 * 1000;
+		time.count += (LINT)time.second * 1000;
+		time.count += (LINT)time.millisecond;
+		switch (ms) {
+		default:
+			this->elapsed = (DINT)((this->count - time.count) / 1000);
+			break;
+		case 1:
+			this->elapsed = (DINT)(this->count - time.count);
+			break;
+		}
+		return this->elapsed;
+	}
+	void _increment(TIME time, bool reset = false) {
+		if (reset) {
+			this->ls = 0;
+			this->lm = 0;
+			this->lh = 0;
+			this->lms = 0;
+		}
+		this->_clock(0);
+		this->count += (LINT)this->hour * 60 * 60 * 1000;
+		this->count += (LINT)this->minute * 60 * 1000;
+		this->count += (LINT)this->second * 1000;
+		this->count += (LINT)this->millisecond;
+		time.count += (LINT)time.hour * 60 * 60 * 1000;
+		time.count += (LINT)time.minute * 60 * 1000;
+		time.count += (LINT)time.second * 1000;
+		time.count += (LINT)time.millisecond;
+		this->lms += (this->count > time.count) ? ((DINT)(this->count - time.count)) : ((DINT)(time.count - this->count));
+		for (; this->lms > 999; this->lms -= 1000) {
+			this->ls += 1;
+		}
+		for (; this->ls > 59; this->ls -= 60) {
+			this->lm += 1;
+		}
+		for (; this->lm > 59; this->lm -= 60) {
+			this->lh += 1;
+		}
+		this->count = 0;
+
+	}
+	void _reset() {
+		this->count = 0;
+		this->difference = 0;
+		this->year = 0;
+		this->month = 0;
+		this->day = 0;
+		this->hour = 0;
+		this->minute = 0;
+		this->second = 0;
+		this->millisecond = 0;
+		this->microsecond = 0;
+		this->nanosecond = 0;
+		/*
+		this->count = 0;
+		this->lh = 0;
+		this->lms = 0;
+		this->lm = 0;
+		this->ls = 0;
+		*/
+	}
+
+	void _difference(TIME time) {
+
+	}
+
+	DINT _since(DINT ms = 0) {
+		DINT count = 0;
+		count += this->lh * 60 * 60 * ((ms) ? (1000) : (1));
+		count += this->lm * 60 * ((ms) ? (1000) : (1));
+		count += this->ls * ((ms) ? (1000) : (1));
+		count += (ms) ? (this->lms) : (0);
+		return count;
+	}
+
+	void _took() {
+		/*
+		STRING in;
+		if (this->lh > 0) {
+			in += WRITER::_itc(this->lh);
+			in += "h ";
+		}
+		if (this->lm > 0) {
+			in += WRITER::_itc(this->lm);
+			in += "m ";
+		}
+		if (this->ls > 0) {
+			in += WRITER::_itc(this->ls);
+			in += "s ";
+		}
+		in += WRITER::_itc(this->lms);
+		in += "ns ";
+		*/
+
+		if (this->lh > 0) std::cout << this->lh << "h ";
+		if (this->lm > 0) std::cout << this->lm << "m ";
+		if (this->ls > 0) std::cout << this->ls << "s ";
+		std::cout << this->lms << "ms ";
+
 	}
 };
 
@@ -868,11 +963,12 @@ struct HOLDER {
 	};
 	HOLDER() {};
 	std::initializer_list<T> ts;
+
 	T operator[](DINT position) {
 		return *(this->ts.begin() + position);
 	}
 	DINT _size() {
-		return this->ts.size();
+		return (DINT)this->ts.size();
 	}
 };
 template <typename LIST_ITEM>
@@ -1226,23 +1322,29 @@ template <typename ITEM>
 struct CHART {
 	struct PACKAGE {
 		PACKAGE() {
-			this->item = {};
+			//this->item = {};
 			this->z = (SINT)INFINITY;
 		};
 		ITEM item;
-		BINT exist;
+		bool exist;
 		SINT z;
+		
+		void operator = (PACKAGE p) {
+			this->item = p.item;
+			this->exist = p.exist;
+			this->z = p.z;
+		}
 
-		void _set(ITEM item, SINT z) {
+		void _set(ITEM item, SINT z = 0) {
 			this->item = item;
 			this->z = z;
-			this->exist = 1;
+			this->exist = true;
 		}
 
 		void _loose() {
-			this->item = {};
+			this->item = nullptr;
 			this->z = (SINT)INFINITY;
-			this->exist = 0;
+			this->exist = false;
 		}
 		
 		void _copy(PACKAGE pk) {
@@ -1251,7 +1353,16 @@ struct CHART {
 			this->z = pk.z;
 		}
 	};
-	CHART(DINT block = 8) {
+	struct COLOR {
+		COLOR() {
+			this->r = this->dice._roll(0, 255);
+			this->g = this->dice._roll(0, 255);
+			this->b = this->dice._roll(0, 255);
+		};
+		DINT r, g, b;
+		RANDOM dice;
+	};
+	CHART(DINT block) {
 		//std::cout << "\nConstructing chart.";
 		this->block = block;
 		this->size = 0;
@@ -1286,6 +1397,17 @@ struct CHART {
 		this->debug = 0;
 
 	}
+	CHART() {
+		this->size = 0;
+		this->length = 0;
+		this->last = 0;
+		this->item = nullptr;
+		this->exist = nullptr;
+		this->package = nullptr;
+		this->filled = 0;
+		this->block = 8;
+		this->debug = 0;
+	};
 	~CHART() {
 		this->size = 0;
 		//this->block = 0;
@@ -1302,13 +1424,19 @@ struct CHART {
 	BINT* exist;
 	PACKAGE* package;
 	STRING name;
+	COLOR color;
+
+	void _dump() {
+		std::cout << "\n" << this->name.text << " -> " << this->length;
+
+	}
 
 	DINT _exist(DINT position) {
 		return this->exist[position];
 	}
 
 	void _resize(DINT size = 0) {
-		if (this->debug) std::cout << "\n Resising (" << this->size;
+		//if (this->debug) std::cout << "\n Resising (" << this->size;
 		DINT total = this->size;
 		if (size > 0) {
 			this->size = size;
@@ -1354,7 +1482,7 @@ struct CHART {
 			this->exist = new BINT[this->size];
 			//this->package = new PACKAGE[this->size];
 		}
-		if(this->debug) std::cout << " -> " << this->size << ")";
+		//if(this->debug) std::cout << " -> " << this->size << ")";
 	};
 
 	void _reverse() {
@@ -1548,50 +1676,351 @@ struct CHART {
 	}
 
 };
-template <typename ITEM>
-struct ARRAY {
-	ARRAY(DINT w = 0, DINT h = 0) {
-		this->w = w;
-		this->h = h;
-		this->depth = new ARRAY<ITEM>[w];
-		for (DINT x = 0; x < w; x++) {
-			this->depth[x].depth = new ARRAY<ITEM>[h];
-			for (DINT y = 0; y < h; y++) {
-				this->depth[x].depth[y].exist = 0;
-				//std::cout << "\n> Setting " << x << ", " << y << " : ";
-				//std::cout << this->depth[x].exist[y];
 
-			}
+template <typename ITEM>
+struct IMAP {
+	struct PACKAGE {
+		PACKAGE() {
+			this->z = 0;
+			this->exist = false;
+			this->item = {};
+		};
+
+		PACKAGE(ITEM item, bool exist, double z) {
+			ITEM* i = new ITEM(item);
+			this->item = *i;
+			this->exist = exist;
+			this->z = z;
+			delete i;
+		}
+
+		~PACKAGE() {
+			this->z = 0;
+			this->exist = false;
+			this->item = {};
+		}
+
+		ITEM item;
+		bool exist;
+		double z;
+
+		/*
+		void operator = (PACKAGE p) {
+			this->item = p.item;
+			this->exist = p.exist;
+			this->z = p.z;
+		}
+		*/
+
+		void _dump() {
+			std::cout << "\nPACKAGE: " << this->exist << " (" << this->z << ")";
 		}
 	};
-	DINT w, h;
-	DINT length;
-	ARRAY<ITEM>* depth;
-	ITEM item;
-	DINT exist;
-	//DINT exist[w][h];
+
+	IMAP(DINT block = 8) {
+		this->block = block;
+		this->size = 0;
+		this->length = 0;
+		this->last = 0;
+		this->counter = 0;
+		this->package = nullptr;
+		this->z = false;
+	};
+
+	DINT block, size, length, last, counter;
+	bool z;
+	PACKAGE* package;
+	PACKAGE dummy;
 
 
-	void _add(DINT x, DINT y, ITEM item) {
-		this->depth[x].depth[y].exist = 1;
-		this->depth[x].depth[y].item = item;
-		this->length++;
+	void _resize(DINT size = 0) {
+		DINT total = this->size;
+		if (size > 0) {
+			this->size += size;
+		}
+		else {
+			this->size += this->block;
+		}
+
+		if (this->length > 0) {
+			PACKAGE* package = new PACKAGE[total];
+			DINT c = 0;
+			for (DINT i = 0; i < total; i++) {
+				if (this->package[i].exist) {
+					package[c] = this->package[i];
+					c++;
+				}
+			}
+			delete[] this->package;
+			this->package = new PACKAGE[this->size];
+			for (DINT i = 0; i < total; i++) {
+				if (package[i].exist) {
+					this->package[i] = package[i];
+				}
+			}
+			delete[] package;
+		}
+		else {
+			this->package = new PACKAGE[this->size];
+		}
 	}
 
-	void operator <<(ITEM item) {
+	void _swap(DINT a, DINT b) {
+		PACKAGE pb = this->package[b];
+		this->package[b] = this->package[a];
+		this->package[a] = pb;
+	}
+
+	SLINT _sort(SINT dir = 1) {
+		SLINT swaps = 0;
+		for (DINT i = 0; i < this->size; i++) {
+			for (DINT c = 0; c < this->size; c++) {
+				if (i != c) {
+					PACKAGE a = this->package[i];
+					PACKAGE b = this->package[c];
+					if (a.exist && b.exist) {
+						switch (dir) {
+						default:
+							break;
+						case -1:
+							if (a.z < b.z) {
+								this->_swap(i, c);
+								swaps++;
+							}
+							break;
+						case 1:
+							if (a.z > b.z) {
+								this->_swap(i, c);
+								swaps++;
+							}
+							break;
+						}
+					}
+				}
+			}
+		}
+
+
+		return swaps;
+	}
+
+	void _s(DINT dir = 1) {
+
+		SINT minc = 0, maxc = this->size - 1, min, max;
+		min = (SINT)INFINITY;
+		max = (SINT)-INFINITY;
+		for (DINT i = 0; i < this->size; i++) {
+
+		}
 
 	}
 
-
-	void _set(DINT x, DINT y, ITEM item) {
-		this->depth[x].depth[y].exist = 1;
-		this->depth[x].depth[y].item = item;
+	void operator << (ITEM item) {
+		DICE dice;
+		if (this->size == 0 || this->length == this->size) this->_resize();
+		for (DINT i = this->last; i < this->size; i++) {
+			if (!this->package[i].exist) {
+				double z;
+				if (this->z) {
+					bool found;
+					do {
+						found = false;
+						z = dice._droll(0, this->size);
+						for (DINT c = 0; c < this->size; c++) {
+							if (this->package[c].z == z) found = true;
+						}
+					} while (found);
+				}
+				else {
+					z = this->counter;
+				}
+				ITEM* it = new ITEM(item);
+				this->package[i] = { *it, true, z};
+				delete it;
+				this->last = i;
+				this->length++;
+				this->counter++;
+				break;
+			}
+		}
 	}
 
+	void operator >> (DINT pos) {
+		if (pos >= 0 && pos < this->size) {
+			this->package[pos].~PACKAGE();
+			this->length--;
+		}
+	}
 
+	ITEM& operator [] (DINT pos) {
+		if (pos >= 0 && pos < this->size) return this->package[pos].item;		
+		return this->dummy.item;
+	}
 
+	void _dump() {
+		std::cout << "\nDUMPING " << this->length << " / " << this->size;
+		for (DINT i = 0; i < this->size; i++) {
+			//if (this->package[i].exist) {
+				this->package[i]._dump();
+			//}
+		}
+	}
+
+	void _close() {
+		if (this->size > 0) {
+			delete[] this->package;
+			this->size = 0;
+			this->length = 0;
+			this->last = 0;
+			this->counter = 0;
+			this->z = false;
+		}
+	}
 
 };
+
+
+struct INTC {
+	INTC(SLINT large, SLINT rounded = 10) {
+		DINT roundee = 0;
+		this->rounder = rounded;
+		if (rounded == -1) {
+			for (SLINT i = large; i >= 10; i /= 10) {
+				roundee++;
+			}
+			rounded = UTILS::_tnth(1, roundee);
+		}
+		else {
+			for (SLINT i = rounded; i > 1; i /= 10) roundee++;
+		}
+		if (large > 0) {
+			for (; large > 0;) {
+				for (DINT i = 0; i <= roundee; i++) {
+					this->number << 0;
+					for (; large > rounded - 1;) {
+						large -= rounded;
+						this->number[i] += 1;
+					}
+					rounded /= 10;
+				}
+			}
+		}
+		else {
+			if (large < 0) {
+
+			}
+			else {
+				this->number << 0;
+			}
+		}
+		this->_number();
+	};
+	INTC() {};
+	IMAP <SLINT> number;
+	SLINT rounder;
+	SLINT large;
+	operator SLINT() const {
+		return this->large;
+	}
+	operator INTC() const {
+		return this->large;
+	}
+	void operator += (SLINT a) {
+		*this = { this->_number() + a, -1};
+
+	}
+	void operator -= (SLINT a) {
+		SLINT n = this->_number() - a;
+		if (n > 0) {
+			*this = { n, -1 };
+		}
+		else {
+			*this = { 0, 1 };
+		}
+	}
+	void operator ++ (DINT a) {
+
+		*this = { this->_number() + 1, -1};
+	}
+	void operator -- (DINT b) {
+		SLINT n = this->_number() - 1;
+		if (n >= 0) {
+			*this = { n, -1 };
+		}
+		else {
+			*this = { 0, 1 };
+		}
+
+	}
+	SLINT operator *= (SLINT a) {
+		SLINT n = this->_number();
+		*this = { n *= a, -1 };
+		return *this;
+	}
+	SLINT operator /= (SLINT a) {
+		SLINT n = this->_number();
+		*this = { n /= a, -1 };
+		return *this;
+	}
+
+	void operator << (SLINT a) {
+		this->number << a;
+	}
+
+	SLINT _number() {
+		SLINT n = 0;
+		SLINT roundee = UTILS::_tnth(1, this->number.length - 1);
+		for (DINT i = 0; i < this->number.length; i++) {
+			n += roundee * this->number[i];
+			roundee /= 10;
+		}
+		this->large = n;
+		return n;
+	}
+
+	double _double() {
+		//this->_dump(true);
+		double r = 0.0;
+		SLINT roundee = UTILS::_tnth(1, this->number.length - 1);
+		SLINT rd = roundee;
+		bool nmet = false;
+		for (DINT i = 0; i < this->number.length; i++) {
+			r += (double)roundee * this->number[i];
+			roundee /= 10;
+		}
+		r /= rd;
+		return r;
+	}
+
+	SLINT _rnumber() {
+		SLINT n = 0;
+		return n;
+	}
+
+	void _dump(bool blocks = false) {
+		if (!blocks) {
+			std::cout << "\n>";
+			for (DINT i = 0; i < this->number.length; i++) {
+				std::cout << this->number[i];
+			}
+		}
+		else {
+			for (DINT i = 0; i < this->number.length; i++) {
+				std::cout << "\n> number[" << i << "] = " << this->number[i];
+			}
+		}
+
+	}
+
+	void _close() {
+		this->number._close();
+		this->rounder = 0;
+		this->large = 0;
+	}
+
+};
+
+
 struct SAVE {
 	SAVE() {
 	};
@@ -1675,6 +2104,19 @@ struct GROUP {
 	};
 	DINT a;
 	CHART<DINT> g;
+
+
+	void _dump() {
+		std::cout << "\n>" << this->a << " (";
+		for (DINT i = 0; i < this->g.length; i++) {
+			std::cout << this->g[i] << ", ";
+		}
+		std::cout << ")";
+	}
+};
+
+struct FACE {
+	IMAP<DINT> i;
 };
 
 struct THREAD {
@@ -1694,14 +2136,17 @@ struct THREAD {
 
 struct DIRECTORY {
 	DIRECTORY(const char name[]) {
+		std::cout << "\nDIRECTORY: " << name;
 		if (std::filesystem::exists(std::filesystem::path({ name }))) {
 			this->path._write(name);
 			for (const auto& file : std::filesystem::directory_iterator(this->path.text)) {
-				STRING f;
-				for (const auto& c : file.path().string()) {
-					f._app(c);
+				STRING f = file.path().string().c_str();
+				for (; f._strip('.', '\\');) {
+					//std::filesystem::current_path(std::filesystem::current_path().parent_path());
 				}
-				f._slice('\\', '.');
+				f._strip('s', '\\');
+				//if (!f._match(".drx")) f._append(".drx");
+				//f._dump();
 				this->file << f;
 			}
 		}
@@ -1790,20 +2235,26 @@ struct DATA {
 	std::fstream stream;
 	SINT type;
 	CHART <EXA> exas;
-	void _read(const char file[], const char folder[] = "", DINT type = 0) {
-		this->file._write(folder);
-		this->file._app('\\');
-		this->file._append(file);
+	bool _read(const char file[], DINT type = 0, bool debug = false) {
+
+		bool loaded = false;
 		switch (type) {
 		default:
-			this->file._append(".drx");	
+			this->file._write(ENGINE_MAP_DIRECTORY_SPRITE);
+			this->file._app('\\');
+			this->file._append(file);
+			if(!this->file._match(".drx")) this->file._append(".drx");
 			break;
 		case 1:
-			this->file._append(".pdrx");
+			this->file._write(ENGINE_MAP_DIRECTORY_POLYGON);
+			this->file._app('\\');
+			this->file._append(file);
+			if(!this->file._match(".pdrx")) this->file._append(".pdrx");
 			break;			
 		}
 		this->stream.open(this->file.text);
-		if (this->stream.is_open()) {
+		bool open = this->stream.is_open();
+		if (open) {
 			char cursor;
 			CHART <char> content;
 			//STRING cont;
@@ -1813,19 +2264,24 @@ struct DATA {
 				content << cursor;
 			}
 			//std::cout << "\n" << cont.text;
-			std::cout << "\nRead a content of " << content.length << " characters. (" << this->file.text << ")";
+			if(debug) std::cout << "\nRead a content of " << content.length << " characters. (" << this->file.text << ")";
+			
 			for (DINT c = 0; c < content.length; c++) {
 				cursor = content[c];
 				if (cursor == '{') {
 					EXA exa;
 					CHART <DINT> x;
+					bool neg = false;
 					c++;
 					do {
-						x << UTILS::_isnum(content[c]);
+						if (content[c] == '-') neg = true; else x << UTILS::_isnum(content[c]);
 						c++;
 					} while (content[c] != '.');
 					exa.x = (double)_iati(x);
+					if (neg) exa.x *= -1.0;
+					neg = false;
 
+					
 					CHART <DINT> dx;
 
 					c++;
@@ -1838,13 +2294,14 @@ struct DATA {
 					CHART <DINT> y;
 					c++;
 					do {
-						y << UTILS::_isnum(content[c]);
+						if (content[c] == '-') neg = true; else y << UTILS::_isnum(content[c]);
 						c++;
 					} while (content[c] != '.');
 					exa.y = (double)_iati(y);
+					if (neg) exa.y *= -1.0;
+					neg = false;
 
 					CHART <DINT> dy;
-
 					c++;
 					do {
 						dy << UTILS::_isnum(content[c]);
@@ -1856,10 +2313,11 @@ struct DATA {
 					CHART <DINT> z;
 					c++;
 					do {
-						z << UTILS::_isnum(content[c]);
+						if (content[c] == '-') neg = true; else z << UTILS::_isnum(content[c]);
 						c++;
 					} while (content[c] != '.');
 					exa.z = (double)_iati(z);
+					if (neg) exa.z *= -1.0;
 
 					CHART <DINT> dz;
 
@@ -1868,20 +2326,25 @@ struct DATA {
 						dz << UTILS::_isnum(content[c]);
 						c++;
 					} while (content[c] != ',' && content[c] != '}');
-					exa.z += _iatdz(dz);					
+					exa.z += _iatdz(dz);
+
+					
+
 					if (content[c] == ',') {
 						//std::cout << "\nPairing.";
 						c+= 2;
 						do {
 							CHART <DINT> prs;
 							//std::cout << "\n";
-							do {
-								//std::cout << content[c];
-								SINT n = UTILS::_isnum(content[c]);
-								if (n != -1) prs << (DINT)n;
-								c++;
-							} while (content[c] != ',' && content[c] != '}');
-							exa.pair << _iati(prs);
+							if (content[c] != '}') {
+								do {
+									//std::cout << content[c];
+									SINT n = UTILS::_isnum(content[c]);
+									if (n != -1) prs << (DINT)n;
+									c++;
+								} while (content[c] != ',' && content[c] != '}');
+								exa.pair << _iati(prs);
+							}
 							if (content[c] != '}') c++;
 						} while (content[c] != ',' && content[c] != '}');
 						if (content[c + 1] == ',') {
@@ -1904,16 +2367,19 @@ struct DATA {
 					else {
 						//c++;
 					}
-
+					
 					//std::cout << "\nSPOT: " << exa.x << ", " << exa.y << ", " << exa.z << " - ";
 					//for (DINT p = 0; p < exa.pair.length; p++) std::cout << exa.pair[p] << " ";
 					this->exas << exa;
 				}
 			//	break;
 			}
+			
 			content._close();
 			this->stream.close();
+			loaded = true;
 		}
+		return loaded;
 	}
 
 
@@ -2067,8 +2533,8 @@ SINT _getID(CHART<NODE*> nodes, NODE n) {
 static CHART <POS> _path(CHART <NODE> *nodes, POS start, POS end, DINT tries = 5) {
 	CHART<POS> set;
 	CHART<NODE*> open;
-	NODE* b = _getNode(*nodes, start.x, start.y);
-	open << b;
+	//NODE* b = _getNode(*nodes, start.x, start.y);
+	open << _getNode(*nodes, start.x, start.y);
 	NODE* current;
 	DINT able = 0;
 	do {
@@ -2116,7 +2582,7 @@ static CHART <POS> _path(CHART <NODE> *nodes, POS start, POS end, DINT tries = 5
 			current = current->parent;
 			//current->_dump();
 		} while (current != nullptr);
-	//	std::cout << " Length: " << set.length;
+		//std::cout << " Length: " << set.length;
 	}
 	return set;
 }
