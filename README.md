@@ -1,7 +1,7 @@
 # Derox
 A hobby project.
 
-Requires C++17 as language to run.
+Requires C++17 as language to compile.
 
 ![screenshot-0412](https://user-images.githubusercontent.com/77432892/213926492-1af340be-d0e3-4548-a072-3b3a359bb195.jpg)
 ![screenshot-2](https://user-images.githubusercontent.com/77432892/198573808-24d3ffed-a962-41e3-9975-fccf3ab6410a.jpg)
